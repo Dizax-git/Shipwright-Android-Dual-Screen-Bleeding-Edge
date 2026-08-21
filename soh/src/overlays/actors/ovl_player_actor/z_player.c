@@ -37,6 +37,13 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#ifdef __ANDROID__
+extern bool Ship_Mobile_HasTouchCameraInput(void);
+extern void Ship_Mobile_HandleTouchCamera(f32* camX, f32* camY);
+extern bool Ship_Mobile_IsTouchItemButtonPulse(void);
+extern bool Ship_Mobile_IsItemButtonHeld(void);
+#endif
+
 // Some player animations are played at this reduced speed, for reasons yet unclear.
 // This is called "adjusted" for now.
 #define PLAYER_ANIM_ADJUSTED_SPEED (2.0f / 3.0f)
@@ -2547,6 +2554,12 @@ void Player_ProcessItemButtons(Player* this, PlayState* play) {
             }
         }
 
+#ifdef __ANDROID__
+        if (Ship_Mobile_IsTouchItemButtonPulse() && this->heldItemButton > 0 &&
+            this->heldItemButton < (s8)ARRAY_COUNT(sItemButtons)) {
+            sControlInput->press.button |= sItemButtons[this->heldItemButton];
+        }
+#endif
         for (i = 0; i < ARRAY_COUNT(sItemButtons); i++) {
             if (CHECK_BTN_ALL(sControlInput->press.button, sItemButtons[i])) {
                 break;
@@ -2567,6 +2580,11 @@ void Player_ProcessItemButtons(Player* this, PlayState* play) {
             if ((item < ITEM_NONE_FE) && (Player_ItemToItemAction(item) == this->heldItemAction)) {
                 sHeldItemButtonIsHeldDown = true;
             }
+#ifdef __ANDROID__
+            if (Ship_Mobile_IsItemButtonHeld()) {
+                sHeldItemButtonIsHeldDown = true;
+            }
+#endif
         } else if (GameInteractor_Should(VB_CHANGE_HELD_ITEM_AND_USE_ITEM, true, item)) {
             this->heldItemButton = i;
             Player_UseItem(play, this, item);
@@ -5606,7 +5624,6 @@ void func_8083A0F4(PlayState* play, Player* this) {
 
 void Player_SetupTalk(PlayState* play, Player* this) {
     Player_SetupActionPreserveAnimMovement(play, this, Player_Action_Talk, 0);
-
     this->stateFlags1 |= PLAYER_STATE1_TALKING | PLAYER_STATE1_IN_CUTSCENE;
 
     if (this->actor.textId != 0) {
@@ -6229,7 +6246,9 @@ s32 Player_ActionHandler_Talk(Player* this, PlayState* play) {
                     // text will be used. This is especially important to prevent unwanted behavior with regards to mask
                     // trading.
                     this->currentMask = sSavedCurrentMask;
-                    Player_StartTalking(play, talkOfferActor);
+                    if (GameInteractor_Should(VB_SKIP_TALKING, true)) {
+                        Player_StartTalking(play, talkOfferActor);
+                    }
                     return true;
                 }
             }
@@ -12654,6 +12673,11 @@ s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
 
     GameInteractor_ExecuteOnPlayerFirstPersonControl(this);
 
+#ifdef __ANDROID__
+    f32 touchCamX = 0.0f, touchCamY = 0.0f;
+    Ship_Mobile_HandleTouchCamera(&touchCamX, &touchCamY);
+#endif
+
     if (!func_8002DD78(this) && !func_808334B4(this) && (arg2 == 0)) { // First person without weapon
         // Y Axis
         if (!(CVarGetInteger(CVAR_SETTING("MoveInFirstPerson"), 0) &&
@@ -12705,6 +12729,9 @@ s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
         if (fabsf(sControlInput->cur.gyro_x) > 0.01f) {
             temp3 += (-sControlInput->cur.gyro_x) * 750.0f;
         }
+#ifdef __ANDROID__
+        temp3 += (s32)(touchCamY * -5.0f * invertYAxisMulti * yAxisMulti);
+#endif
         this->actor.focus.rot.x += temp3;
         this->actor.focus.rot.x = CLAMP(this->actor.focus.rot.x, -temp1, temp1);
 
@@ -12726,6 +12753,9 @@ s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
         if (fabsf(sControlInput->cur.gyro_y) > 0.01f) {
             temp3 += (sControlInput->cur.gyro_y) * 750.0f * invertXAxisMulti;
         }
+#ifdef __ANDROID__
+        temp3 += (s32)(touchCamX * -5.0f * invertXAxisMulti * xAxisMulti);
+#endif
         temp2 += temp3;
         this->actor.focus.rot.y = CLAMP(temp2, -temp1, temp1) + this->actor.shape.rot.y;
     }
