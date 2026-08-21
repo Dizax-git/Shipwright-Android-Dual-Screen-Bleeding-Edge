@@ -11,8 +11,12 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
 import java.util.Locale;
 import java.util.Set;
+import org.apache.commons.compress.PasswordRequiredException;
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
+import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipFile;
+import org.apache.commons.compress.utils.InputStreamStatistics;
 
 final class RomImportService {
     static final long MAX_ROM_BYTES = 64L * 1024 * 1024;
@@ -20,6 +24,7 @@ final class RomImportService {
     static final long MAX_EXPANDED_CANDIDATE_BYTES = 512L * 1024 * 1024;
     static final long RATIO_CHECK_THRESHOLD_BYTES = 1024L * 1024;
     static final long MAX_COMPRESSION_RATIO = 200;
+    static final int SEVEN_Z_MEMORY_LIMIT_KIB = 128 * 1024;
     private static final int BUFFER_SIZE = 64 * 1024;
 
     enum Error {
@@ -81,6 +86,12 @@ final class RomImportService {
                     return Result.failure(Error.UNSAFE_ARCHIVE);
                 }
                 return importZip(source, supportedHashes);
+            }
+            if (lowerName.endsWith(".7z")) {
+                if (source.length() > MAX_ARCHIVE_BYTES) {
+                    return Result.failure(Error.UNSAFE_ARCHIVE);
+                }
+                return importSevenZ(source, supportedHashes);
             }
             if (!lowerName.endsWith(".z64")) {
                 return Result.failure(Error.UNSUPPORTED_INPUT);
@@ -148,6 +159,65 @@ final class RomImportService {
                 accepted = candidate;
             }
         } catch (IOException | UnsafeInputException | EncryptedArchiveException e) {
+            if (accepted != null) {
+                deleteQuietly(accepted.file);
+            }
+            throw e;
+        }
+
+        if (accepted == null) {
+            return Result.failure(Error.NO_SUPPORTED_ROM);
+        }
+        return Result.success(accepted.file);
+    }
+
+    private Result importSevenZ(File source, Set<String> supportedHashes)
+            throws IOException, UnsafeInputException, EncryptedArchiveException {
+        Candidate accepted = null;
+        long expandedTotal = 0;
+        try (SevenZFile sevenZ = SevenZFile.builder()
+                .setFile(source)
+                .setMaxMemoryLimitKiB(SEVEN_Z_MEMORY_LIMIT_KIB)
+                .get()) {
+            for (SevenZArchiveEntry entry; (entry = sevenZ.getNextEntry()) != null;) {
+                if (entry.isDirectory() || !entry.hasStream() || !isZ64(entry.getName())) {
+                    continue;
+                }
+                validateEntryName(entry.getName());
+                validateDeclaredSize(entry.getSize());
+
+                Candidate candidate;
+                long compressedSize;
+                try (InputStream input = sevenZ.getInputStream(entry)) {
+                    candidate = copyAndHash(input);
+                    InputStreamStatistics statistics = sevenZ.getStatisticsForCurrentEntry();
+                    compressedSize = statistics == null ? -1 : statistics.getCompressedCount();
+                }
+                try {
+                    expandedTotal = addExpandedBytes(expandedTotal, candidate.size);
+                    validateCompressionRatio(candidate.size, compressedSize);
+                } catch (UnsafeInputException e) {
+                    deleteQuietly(candidate.file);
+                    throw e;
+                }
+
+                if (!supportedHashes.contains(candidate.sha1)) {
+                    deleteQuietly(candidate.file);
+                    continue;
+                }
+                if (accepted != null) {
+                    deleteQuietly(accepted.file);
+                    deleteQuietly(candidate.file);
+                    return Result.failure(Error.MULTIPLE_SUPPORTED_ROMS);
+                }
+                accepted = candidate;
+            }
+        } catch (PasswordRequiredException e) {
+            if (accepted != null) {
+                deleteQuietly(accepted.file);
+            }
+            throw new EncryptedArchiveException();
+        } catch (IOException | UnsafeInputException e) {
             if (accepted != null) {
                 deleteQuietly(accepted.file);
             }
