@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
+import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -138,6 +140,50 @@ public class RomImportServiceTest {
         assertEquals(0, work.listFiles().length);
     }
 
+    @Test
+    public void sevenZFindsOneSupportedEntryAmongSeveralCandidates() throws Exception {
+        File work = temporary.newFolder("work");
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("wrong.z64", new byte[] { 5 });
+        entries.put("folder/oot.z64", SUPPORTED_BYTES);
+        File archive = sevenZ(temporary.newFile("owned.7z"), entries);
+
+        RomImportService.Result result = new RomImportService(work)
+                .importFile(archive, "owned.7z", hashes(SUPPORTED_BYTES));
+
+        assertTrue(result.isSuccess());
+        assertArrayEquals(SUPPORTED_BYTES, Files.readAllBytes(result.getCandidate().toPath()));
+    }
+
+    @Test
+    public void sevenZRejectsTwoSupportedEntriesAndCleansCandidates() throws Exception {
+        File work = temporary.newFolder("work");
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("one.z64", SUPPORTED_BYTES);
+        entries.put("two.Z64", SUPPORTED_BYTES);
+        File archive = sevenZ(temporary.newFile("duplicate.7z"), entries);
+
+        RomImportService.Result result = new RomImportService(work)
+                .importFile(archive, "duplicate.7z", hashes(SUPPORTED_BYTES));
+
+        assertEquals(RomImportService.Error.MULTIPLE_SUPPORTED_ROMS, result.getError());
+        assertEquals(0, work.listFiles().length);
+    }
+
+    @Test
+    public void sevenZRejectsTraversalEntryNames() throws Exception {
+        File work = temporary.newFolder("work");
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("../OOT.z64", SUPPORTED_BYTES);
+        File archive = sevenZ(temporary.newFile("traversal.7z"), entries);
+
+        RomImportService.Result result = new RomImportService(work)
+                .importFile(archive, "traversal.7z", hashes(SUPPORTED_BYTES));
+
+        assertEquals(RomImportService.Error.UNSAFE_ARCHIVE, result.getError());
+        assertEquals(0, work.listFiles().length);
+    }
+
     private static File write(File file, byte[] bytes) throws Exception {
         try (FileOutputStream output = new FileOutputStream(file)) {
             output.write(bytes);
@@ -155,6 +201,20 @@ public class RomImportServiceTest {
                 output.putNextEntry(new ZipEntry(entry.getKey()));
                 output.write(entry.getValue());
                 output.closeEntry();
+            }
+        }
+        return archive;
+    }
+
+    private static File sevenZ(File archive, Map<String, byte[]> entries) throws Exception {
+        try (SevenZOutputFile output = new SevenZOutputFile(archive)) {
+            for (Map.Entry<String, byte[]> item : entries.entrySet()) {
+                SevenZArchiveEntry entry = new SevenZArchiveEntry();
+                entry.setName(item.getKey());
+                entry.setSize(item.getValue().length);
+                output.putArchiveEntry(entry);
+                output.write(item.getValue());
+                output.closeArchiveEntry();
             }
         }
         return archive;
