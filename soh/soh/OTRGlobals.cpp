@@ -32,6 +32,7 @@
 #include "Enhancements/randomizer/randomizer_check_tracker.h"
 #include "Enhancements/randomizer/static_data.h"
 #include "Enhancements/gameplaystats.h"
+#include "Enhancements/DualScreenHUD/DualScreenHUD.h"
 #include "frame_interpolation.h"
 #include "SohGui/SohMenu.h"
 #include "SohGui/SohGui.hpp"
@@ -1814,6 +1815,7 @@ void RunCommands(Gfx* Commands, const std::vector<std::unordered_map<Mtx*, MtxF>
         wnd->DrawAndRunGraphicsCommands(Commands, m);
         intp->mInterpolationIndex++;
     }
+    DualScreenHUD_PresentFrame();
     ImGui::PopStyleColor();
 }
 

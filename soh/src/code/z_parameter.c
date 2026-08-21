@@ -6,6 +6,7 @@
 #include "soh_assets.h"
 
 #include "soh/Enhancements/gameplaystats.h"
+#include "soh/Enhancements/DualScreenHUD/DualScreenHUD.h"
 #include "soh/Enhancements/custom-message/CustomMessageInterfaceAddon.h"
 #include "soh/Enhancements/cosmetics/cosmeticsTypes.h"
 #include "soh/Enhancements/enhancementTypes.h"
@@ -5412,6 +5413,11 @@ void Interface_Draw(PlayState* play) {
         Minimap_Draw(play);
 
         if ((R_PAUSE_MENU_MODE != 2) && (R_PAUSE_MENU_MODE != 3)) {
+            const bool dualScreenHudActive = DualScreenHUD_IsActive();
+            if (dualScreenHudActive) {
+                DualScreenHUD_EndHudPass();
+            }
+
             if (CVarGetInteger(CVAR_ENHANCEMENT("MirroredWorld"), 0)) {
                 gSPMatrix(OVERLAY_DISP++, interfaceCtx->view.projectionFlippedPtr,
                           G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
@@ -5425,6 +5431,10 @@ void Interface_Draw(PlayState* play) {
             // Render enemy health bar after Z-target to leverage set variables
             if (CVarGetInteger(CVAR_ENHANCEMENT("EnemyHealthBar"), 0)) {
                 Interface_DrawEnemyHealthBar(&play->actorCtx.targetCtx, play);
+            }
+
+            if (dualScreenHudActive) {
+                DualScreenHUD_BeginHudPass();
             }
         }
 

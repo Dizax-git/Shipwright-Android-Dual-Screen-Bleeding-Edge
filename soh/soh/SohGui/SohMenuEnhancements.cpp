@@ -631,6 +631,12 @@ void SohMenu::AddMenuEnhancements() {
 
     path.column = SECTION_COLUMN_2;
     AddWidget(path, "UI", WIDGET_SEPARATOR_TEXT);
+#if defined(__ANDROID__)
+    AddWidget(path, "Dual-Screen HUD", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("DualScreenHUD"))
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Moves the gameplay HUD to an eligible secondary display. Does nothing when no secondary display is available."));
+#endif
     AddWidget(path, "Minimal UI", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("MinimalUI"))
         .Options(CheckboxOptions().Tooltip("Hides most of the UI when not needed.\n"
