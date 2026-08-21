@@ -49,3 +49,21 @@ Validated on 2026-08-21 from local commit `f15c6e898` and official Shipwright `9
 | Negative signer test | Expected all-zero fingerprint was rejected with expected-versus-actual evidence |
 
 AYN Thor installation and dual-display gameplay validation are recorded separately after installed-signer compatibility is checked.
+
+## Local Native publication
+
+Published atomically on 2026-08-21 after the signed candidate passed both the persistent signing-worker policy and the standalone APK verifier.
+
+| Check | Result |
+|---|---|
+| Native path | `H:\My Drive\Roms\Native\The Legend of Zelda - Ocarina of Time - Ship of Harkinian Dual Screen\Ship of Harkinian - Dual Screen v9.2.3.apk` |
+| APK count in game folder | exactly one |
+| Published SHA-256 | `31d0d44d94c340e6887ba13146ae04ed1a994f284c86b45f0b0c3834db55d3a6` |
+| Package | `com.dishii.soh` |
+| Version | `versionName=9.2.3-dual-screen.1`, `versionCode=902031` |
+| ABI | exactly `arm64-v8a` |
+| Alignment | 16 KiB page alignment passed |
+| Signer SHA-256 | `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004` |
+| Payload | APK and nested `assets/soh.o2r` contain no ROM, OTR/O2R, save, state, or quest payload |
+
+The public source repository does not contain the private local signing credential or the locally signed APK.
