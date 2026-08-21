@@ -1,5 +1,11 @@
 def buildAsLibrary = project.hasProperty('BUILD_AS_LIBRARY');
 def buildAsApplication = !buildAsLibrary
+def generatedCanonicalAssets = layout.buildDirectory.dir('generated/canonicalAssets')
+
+tasks.register('syncSupportedRomHashes', Copy) {
+    from rootProject.file('../docs/supportedHashes.json')
+    into generatedCanonicalAssets
+}
 if (buildAsApplication) {
     apply plugin: 'com.android.application'
 }
@@ -88,6 +94,7 @@ android {
             }
         }
     }
+    sourceSets.main.assets.srcDir(generatedCanonicalAssets)
     lintOptions {
         abortOnError false
     }
@@ -108,7 +115,15 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'androidx.core:core:1.7.0' // Use the latest version
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'org.apache.commons:commons-compress:1.28.0'
+    implementation 'org.tukaani:xz:1.12'
     testImplementation 'junit:junit:4.13.2'
+}
+
+tasks.configureEach { task ->
+    if (task.name.startsWith('merge') && task.name.endsWith('Assets')) {
+        task.dependsOn('syncSupportedRomHashes')
+    }
 }
 
 task wrapper(type: Wrapper) {
