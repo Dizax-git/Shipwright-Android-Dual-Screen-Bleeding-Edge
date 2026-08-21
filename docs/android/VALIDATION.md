@@ -26,3 +26,26 @@ Validated on 2026-08-21 before applying the dual-screen feature layer.
 | Nested archive payload | 1,279 entries; no ROM, OTR/O2R, save, or quest payload |
 
 The unsigned result is the deliberate handoff boundary: release candidates are built without an ad-hoc Gradle identity and are normalized only by the persistent local signing worker after the final dual-screen APK passes its own validation gates.
+
+## Dual-screen signed release candidate
+
+Validated on 2026-08-21 from local commit `f15c6e898` and official Shipwright `9.2.3`.
+
+| Check | Result |
+|---|---|
+| Build commands | `gradlew.bat :app:externalNativeBuildRelease`, then `gradlew.bat :app:testReleaseUnitTest :app:assembleRelease` |
+| Host tests | 17 Android source-contract tests and Java release unit tests passed |
+| Package | `com.dishii.soh` |
+| Version | `versionName=9.2.3-dual-screen.1`, `versionCode=902031` |
+| ABI | exactly `arm64-v8a` |
+| Unsigned candidate | `soh_release_v9.2.3-dual-screen.1.apk` |
+| Unsigned SHA-256 | `adf56a0b14954057f4c8eff3f2f74376f66098d237a25a30a4f3a0362c8d37c6` |
+| Signed candidate SHA-256 | `31d0d44d94c340e6887ba13146ae04ed1a994f284c86b45f0b0c3834db55d3a6` |
+| Persistent signer SHA-256 | `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004` |
+| Alignment | `zipalign -c -P 16 4` passed |
+| Signature | `apksigner verify --verbose --print-certs` passed with exactly one pinned signer |
+| Payload | APK and nested `assets/soh.o2r` contain no ROM, OTR, save, state, or quest payload |
+| Payload preservation | Every non-signature ZIP `(name, content hash, count)` entry matched across local signing |
+| Negative signer test | Expected all-zero fingerprint was rejected with expected-versus-actual evidence |
+
+AYN Thor installation and dual-display gameplay validation are recorded separately after installed-signer compatibility is checked.
