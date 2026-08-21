@@ -7,6 +7,7 @@ import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
 /** Hosts the native HUD surface on a presentation-capable secondary display. */
 public final class DualScreenHudPresentation extends Presentation {
@@ -42,10 +43,14 @@ public final class DualScreenHudPresentation extends Presentation {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        FrameLayout root = new FrameLayout(getContext());
         SurfaceView surfaceView = new SurfaceView(getContext());
         surfaceView.getHolder().addCallback(surfaceCallback);
-        setContentView(surfaceView, new ViewGroup.LayoutParams(
+        root.addView(surfaceView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(root, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        activity.attachControllerOverlay(root);
     }
 
     void notifySurfaceDestroyedIfNeeded() {
@@ -60,6 +65,7 @@ public final class DualScreenHudPresentation extends Presentation {
     @Override
     public void dismiss() {
         notifySurfaceDestroyedIfNeeded();
+        activity.attachControllerOverlayToPrimary();
         try {
             super.dismiss();
         } catch (RuntimeException exception) {
