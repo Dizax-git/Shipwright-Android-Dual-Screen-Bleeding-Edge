@@ -810,6 +810,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
         vorbisfile
         opusfile
         Threads::Threads
+        android
+        EGL
+        GLESv2
         SDL2_net::SDL2_net-static
     )
 else()
