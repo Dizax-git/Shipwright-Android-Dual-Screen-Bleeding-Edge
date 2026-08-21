@@ -20,8 +20,9 @@ android {
         }
         minSdkVersion 24
         targetSdkVersion 33
-        versionCode 10
-        versionName "9.2.3"
+        // Stable version encoded as major * 100000 + minor * 1000 + patch * 10 + local revision.
+        versionCode 902031
+        versionName "9.2.3-dual-screen.1"
     }
     signingConfigs {
         release {
