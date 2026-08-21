@@ -1,3 +1,27 @@
+# Shipwright Android Dual Screen — Bleeding Edge
+
+This is an **unofficial, source-only Android dual-screen port** of [HarbourMasters/Shipwright](https://github.com/HarbourMasters/Shipwright). It keeps the dual-screen implementation from [chilhaps/Shipwright-Android-Dual-Screen](https://github.com/chilhaps/Shipwright-Android-Dual-Screen), adapts it to the current renderer, and layers it over the newest validated **stable** Shipwright release with the modern Android compatibility work derived from [please-be-nice/Shipwright-android](https://github.com/please-be-nice/Shipwright-android).
+
+“Bleeding Edge” means this repository is intended to follow the latest stable upstream Shipwright release. It does not use Shipwright development/nightly builds as its release base.
+
+Current base: Shipwright `9.2.3` (`cb71e22a79bc5d1f688fa881795bbd93094895fc`). The exact source and submodule lineage is recorded in [Android provenance](docs/android/PROVENANCE.md), and the verified build contract is in [Android validation](docs/android/VALIDATION.md).
+
+## Android dual-screen build
+
+The Android app targets `arm64-v8a` with package `com.dishii.soh`. From the `Android` directory, run:
+
+```powershell
+.\gradlew.bat :app:testReleaseUnitTest :app:assembleRelease
+```
+
+The resulting APK is intentionally unsigned. Use your own persistent Android signing identity before installation or updates. This repository does not publish a private signing key, a locally signed APK, ROMs, generated game OTR/O2R files, saves, or other copyrighted game payloads.
+
+Dual-screen routing is enabled by default on supported Android devices. If no suitable secondary presentation display exists, rendering safely remains on the primary display.
+
+## Upstream project information
+
+The remainder of this README comes from the official Shipwright project and describes its game requirements and general usage.
+
 ![Ship of Harkinian](docs/shiptitle.darkmode.png#gh-dark-mode-only)
 ![Ship of Harkinian](docs/shiptitle.lightmode.png#gh-light-mode-only)
 
