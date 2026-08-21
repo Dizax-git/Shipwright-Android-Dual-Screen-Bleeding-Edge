@@ -67,3 +67,21 @@ Published atomically on 2026-08-21 after the signed candidate passed both the pe
 | Payload | APK and nested `assets/soh.o2r` contain no ROM, OTR/O2R, save, state, or quest payload |
 
 The public source repository does not contain the private local signing credential or the locally signed APK.
+
+## AYN Thor installation
+
+Installed as a new package on AYN Thor `bfa98654` on 2026-08-21. No prior `com.dishii.soh` installation or app data existed.
+
+| Check | Result |
+|---|---|
+| Installation | `adb install -r` succeeded |
+| Installed package | `com.dishii.soh` |
+| Installed version | `versionName=9.2.3-dual-screen.1`, `versionCode=902031` |
+| Installed base APK | byte-identical to the published APK; SHA-256 `31d0d44d94c340e6887ba13146ae04ed1a994f284c86b45f0b0c3834db55d3a6` |
+| Installed signer | `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004` |
+| First launch | Process and SDL native entry started without a Java or native crash |
+| Storage permission | App-specific `MANAGE_EXTERNAL_STORAGE` permission granted, matching the first-launch system request |
+| Device displays | AYN Thor exposed primary display `0` and presentation-capable `Screen-2` display `4` |
+| Gameplay validation | pending; the device remained behind its secure keyguard, which ADB did not bypass |
+
+This is installation and launch evidence only. It does not claim that ROM setup, gameplay, HUD routing, or ten-minute play have been validated on the physical displays.
