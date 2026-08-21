@@ -1,0 +1,45 @@
+name: Android tests and release candidate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-24.04
+    container:
+      image: djvdw7f2ro/android-builder-soh:v1.0.4
+    steps:
+      - name: Check out source and Android submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure Android SDK paths
+        run: |
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          printf 'sdk.dir=%s\nndk.dir=%s\n' "${ANDROID_SDK_ROOT}" "${ANDROID_NDK_HOME}" > Android/local.properties
+
+      - name: Generate project resource archive
+        run: |
+          cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-linux --target GenerateSohOtr --parallel
+          cp soh/soh.o2r Android/app/src/main/assets/soh.o2r
+
+      - name: Test and assemble unsigned Android candidate
+        run: |
+          cd Android
+          ./gradlew --no-daemon :app:testReleaseUnitTest :app:assembleRelease
+
+      - name: Upload unsigned release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: shipwright-android-unsigned-${{ github.sha }}
+          path: Android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 7
