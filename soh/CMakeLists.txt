@@ -828,6 +828,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
         vorbisfile
         opusfile
         Threads::Threads
+        android
+        EGL
+        GLESv2
         "$<$<BOOL:${BUILD_REMOTE_CONTROL}>:SDL2_net::SDL2_net-static>"
     )
 else()
