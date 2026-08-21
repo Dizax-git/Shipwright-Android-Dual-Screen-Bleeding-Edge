@@ -29,3 +29,32 @@ Describe 'Release signing handoff' {
         $gradle | Should Match "if \(project\.hasProperty\('storeFile'\)\) \{\s+signingConfig signingConfigs\.release\s+\}"
     }
 }
+
+Describe 'Android archived ROM import boundary' {
+    BeforeAll {
+        $mainActivityPath = Join-Path $repositoryRoot 'Android\app\src\main\java\com\dishii\soh\MainActivity.java'
+        $script:mainActivity = Get-Content -LiteralPath $mainActivityPath -Raw
+    }
+
+    It 'advertises raw ZIP and 7z selections' {
+        $mainActivity | Should Match 'application/octet-stream'
+        $mainActivity | Should Match 'application/zip'
+        $mainActivity | Should Match 'application/x-7z-compressed'
+    }
+
+    It 'loads canonical hashes and imports away from the UI thread' {
+        $mainActivity | Should Match 'supportedHashes\.json'
+        $mainActivity | Should Match 'romImportExecutor\.execute'
+        $mainActivity | Should Match 'RomImportService'
+    }
+
+    It 'atomically promotes only a verified pending ROM' {
+        $mainActivity | Should Match 'OOT\.z64\.pending'
+        $mainActivity | Should Match 'Os\.rename'
+        $mainActivity | Should Not Match 'destinationFile\.delete\(\)'
+    }
+
+    It 'reports failed selections back to the native extractor' {
+        $mainActivity | Should Match 'nativeHandleSelectedFile\(null\)'
+    }
+}
