@@ -201,7 +201,7 @@ The inventory compares official `9.2.3` to `android-reference/android-port-923` 
 | `soh/soh/SohGui/Menu.cpp` | `M` | `excluded-divergence` |
 | `soh/soh/SohGui/SohGui.cpp` | `M` | `excluded-divergence` |
 | `soh/soh/SohGui/SohMenuNetwork.cpp` | `M` | `accepted-android-feature` |
-| `soh/soh/SohGui/SohMenuRandomizer.cpp` | `M` | `excluded-divergence` |
+| `soh/soh/SohGui/SohMenuRandomizer.cpp` | `M` | `required-android` |
 | `soh/soh/SohGui/SohModals.cpp` | `M` | `required-android` |
 | `soh/soh/SohGui/UIWidgets.cpp` | `M` | `excluded-divergence` |
 | `soh/soh/SohGui/UIWidgets.hpp` | `M` | `excluded-divergence` |
