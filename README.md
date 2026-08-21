@@ -28,7 +28,11 @@ The Android app targets `arm64-v8a` with package `com.dishii.soh`. From the `And
 
 The APK produced directly by Gradle is intentionally unsigned. If you build from source, sign it with your own persistent Android identity; a self-signed build cannot update over the downloadable release unless it uses the same private identity. Release APKs are signed separately with the repository's persistent release identity. The private signing key, ROMs, generated game OTR/O2R files, saves, and other copyrighted game payloads are never published.
 
-Dual-screen routing is enabled by default on supported Android devices. If no suitable secondary presentation display exists, rendering safely remains on the primary display.
+Dual-screen routing is enabled by default on supported Android devices. On the AYN Thor, gameplay and menus remain on the upper display while the gameplay HUD and touch-controller overlay use the lower display. The eye button hides the controller layer for physical-controller play without disabling the lower HUD. If no suitable secondary presentation display exists, both the normal HUD and touch controller safely return to the primary display.
+
+Android release identity is defined once in `Android/version.properties`. APK version names use a numeric four-component form such as `9.2.3.3`, while GitHub tags retain the descriptive form `v9.2.3-dual-screen.3`. Both the APK verifier and build reject mismatched version metadata so every published revision remains a real Android update.
+
+The preserved feature contract from the official, Waterdish Android, and Chilhaps dual-screen sources is recorded in [Android feature parity](docs/android/FEATURE_PARITY.md).
 
 ## Upstream project information
 

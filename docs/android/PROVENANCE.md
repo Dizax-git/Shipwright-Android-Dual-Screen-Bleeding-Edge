@@ -18,8 +18,9 @@ Verified on 2026-08-21. Official stable source is the newest non-draft, non-prer
 
 - Official game behavior comes from Shipwright 9.2.3.
 - The modern Android reference supplies audited Android platform integration and Android-compatible submodules.
-- The Chilhaps reference supplies only the dual-screen feature behavior and is adapted to the modern renderer API.
-- The Waterdish reference is comparison evidence for the older 9.0.2 Android base and is not an implementation source.
+- The Waterdish reference defines the original Android user-facing and build behavior. Its implementation is carried forward through the audited modern Android layer rather than by importing obsolete 9.0.2 gameplay code.
+- The Chilhaps reference defines the dual-screen behavior and is adapted to the maintained renderer API. The Thor composition additionally moves the preserved Waterdish touch layer to the secondary presentation with primary-display fallback.
+- `docs/android/FEATURE_PARITY.md` maps each maintained behavior to current source and automated evidence.
 - ROMs, generated OTRs, saves, and user content are excluded from the repository and APK.
 ## Non-asset tree-difference classification
 
