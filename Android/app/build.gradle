@@ -2,7 +2,7 @@ def buildAsLibrary = project.hasProperty('BUILD_AS_LIBRARY');
 def buildAsApplication = !buildAsLibrary
 def generatedCanonicalAssets = layout.buildDirectory.dir('generated/canonicalAssets')
 
-tasks.register('syncSupportedRomHashes', Copy) {
+def syncSupportedRomHashes = tasks.register('syncSupportedRomHashes', Copy) {
     from rootProject.file('../docs/supportedHashes.json')
     into generatedCanonicalAssets
 }
@@ -27,8 +27,8 @@ android {
         minSdkVersion 24
         targetSdkVersion 33
         // Stable version encoded as major * 100000 + minor * 1000 + patch * 10 + local revision.
-        versionCode 902031
-        versionName "9.2.3-dual-screen.1"
+        versionCode 902032
+        versionName "9.2.3-dual-screen.2"
     }
     signingConfigs {
         release {
@@ -121,8 +121,10 @@ dependencies {
 }
 
 tasks.configureEach { task ->
-    if (task.name.startsWith('merge') && task.name.endsWith('Assets')) {
-        task.dependsOn('syncSupportedRomHashes')
+    def mergesAssets = task.name.startsWith('merge') && task.name.endsWith('Assets')
+    def consumesAssetsDuringLint = task.name.toLowerCase().contains('lint')
+    if (mergesAssets || consumesAssetsDuringLint) {
+        task.dependsOn(syncSupportedRomHashes)
     }
 }
 
