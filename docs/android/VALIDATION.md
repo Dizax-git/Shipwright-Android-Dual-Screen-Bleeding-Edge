@@ -85,3 +85,29 @@ Installed as a new package on AYN Thor `bfa98654` on 2026-08-21. No prior `com.d
 | Gameplay validation | pending; the device remained behind its secure keyguard, which ADB did not bypass |
 
 This is installation and launch evidence only. It does not claim that ROM setup, gameplay, HUD routing, or ten-minute play have been validated on the physical displays.
+
+## Archived ROM import release candidate
+
+Validated on 2026-08-21 from implementation commits `e9ad65930079e94a9b81b41996f1c738fc3fe67d` through `2598051276b85c74f8488ccd84af9b9e4b3bf43e`.
+
+| Check | Result |
+|---|---|
+| Supported selection formats | raw `.z64`, `.zip`, and `.7z` |
+| Archive selection rule | scan every case-insensitive `.z64` entry; accept only when exactly one entry matches `docs/supportedHashes.json` |
+| Safety gates | rejects traversal names, encrypted archives, oversized inputs/candidates, excessive total expansion, extreme compression ratios, no match, and multiple matches |
+| Existing ROM preservation | verified candidate is flushed to `OOT.z64.pending` and atomically renamed over `OOT.z64` only after validation succeeds |
+| Canonical hash asset | APK `assets/supportedHashes.json` is byte-identical to `docs/supportedHashes.json` |
+| Build | clean native/test compilation exposed a missing generated-asset dependency in `lintVitalAnalyzeRelease`; a regression test was added, the dependency was corrected, and `:app:testReleaseUnitTest :app:assembleRelease` then passed through `lintVitalRelease` and APK assembly |
+| Host tests | 26 Pester source/artifact-contract tests and 11 Java release unit tests passed |
+| Owned archive probe | production `RomImportService` accepted `Legend of Zelda, The - Ocarina of Time (USA).7z` without modifying it |
+| Imported ROM hash | SHA-1 `ad69c91157f6705e8ab06c79fe08aad47bb57ba7` (`NTSC 1.0 (US)`) |
+| Package | `com.dishii.soh` |
+| Version | `versionName=9.2.3-dual-screen.2`, `versionCode=902032` |
+| ABI | exactly `arm64-v8a` |
+| Unsigned SHA-256 | `12e1785ec21e21634e68a17b601692cce9ae4c5d6cb8209273d5cf4c70f4e363` |
+| Signed SHA-256 | `13df4da1702e298e5c6e4de8917c4d22ea37ade96d1bb295dee6d5ce74c77b3b` |
+| Persistent signer SHA-256 | `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004` |
+| Alignment | `zipalign -c -P 16 4` passed |
+| Signature | `apksigner verify --verbose --print-certs` passed with exactly one pinned signer |
+| Payload | APK contains no ROM, OTR/O2R, save, state, or quest payload |
+| Device validation | pending because AYN Thor `bfa98654` was not connected; no unrelated connected device was modified |
