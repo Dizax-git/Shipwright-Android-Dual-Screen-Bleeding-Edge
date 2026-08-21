@@ -28,6 +28,15 @@ Describe 'Release signing handoff' {
 
         $gradle | Should Match "if \(project\.hasProperty\('storeFile'\)\) \{\s+signingConfig signingConfigs\.release\s+\}"
     }
+
+    It 'generates canonical hash assets before merge and lint consumers' {
+        $gradlePath = Join-Path $repositoryRoot 'Android\app\build.gradle'
+        $gradle = Get-Content -LiteralPath $gradlePath -Raw
+
+        $gradle | Should Match "task\.name\.startsWith\('merge'\)\s+&&\s+task\.name\.endsWith\('Assets'\)"
+        $gradle | Should Match "task\.name\.toLowerCase\(\)\.contains\('lint'\)"
+        $gradle | Should Match "task\.dependsOn\(syncSupportedRomHashes\)"
+    }
 }
 
 Describe 'Android archived ROM import boundary' {

@@ -14,7 +14,7 @@ The APK contains the complete Android application, but it does **not** contain c
 
 1. Grant the app-specific file-access permission requested by Android.
 2. Let the app prepare its files under the device's `SOH` folder.
-3. Select a supported, legally obtained Ocarina of Time ROM when prompted. The app processes it locally into the required game archive. Alternatively, provide an already generated compatible `oot.o2r` or `oot-mq.o2r` in the `SOH` folder.
+3. Select a supported, legally obtained Ocarina of Time ROM when prompted. Android accepts a raw `.z64` or a `.zip`/`.7z` archive directly. For an archive, the app scans every `.z64` entry and imports only when exactly one matches the official supported hash list. The app processes the verified ROM locally into the required game archive. Alternatively, provide an already generated compatible `oot.o2r` or `oot-mq.o2r` in the `SOH` folder.
 
 The ROM, generated game archive, and saves remain user-owned content and are not included in this repository or its releases.
 
