@@ -15,7 +15,7 @@ Describe 'Dual-screen HUD routing contract' {
     }
 
     It 'returns target feedback and enemy health to the primary framebuffer' {
-        $interface | Should Match '(?s)DualScreenHUD_EndHudPass\(\);.*?func_8002C124\(&play->actorCtx\.targetCtx, play\).*?Interface_DrawEnemyHealthBar\(&play->actorCtx\.targetCtx, play\);.*?DualScreenHUD_BeginHudPass\(\);'
+        $interface | Should Match '(?s)DualScreenHUD_PauseHudPass\(\).*?func_8002C124\(&play->actorCtx\.targetCtx, play\).*?Interface_DrawEnemyHealthBar\(&play->actorCtx\.targetCtx, play\);.*?DualScreenHUD_ResumeHudPass\(\);'
     }
 
     It 'presents once after all interpolation samples' {

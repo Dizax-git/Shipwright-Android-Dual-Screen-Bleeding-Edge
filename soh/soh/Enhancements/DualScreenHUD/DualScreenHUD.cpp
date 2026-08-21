@@ -18,6 +18,7 @@ constexpr uint32_t kHudHeight = 240;
 
 int32_t sHudFramebufferId = -1;
 bool sHudPassActive = false;
+bool sHudPassPaused = false;
 float sSavedAspectRatio = 4.0f / 3.0f;
 
 std::shared_ptr<Fast::Interpreter> GetInterpreter() {
@@ -77,6 +78,53 @@ bool DualScreenHUD_BeginHudPass(void) {
     CLOSE_DISPS(gfxCtx);
 
     sHudPassActive = true;
+    sHudPassPaused = false;
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool DualScreenHUD_PauseHudPass(void) {
+#if defined(__ANDROID__)
+    if (!sHudPassActive || sHudPassPaused || gPlayState == nullptr) {
+        return false;
+    }
+
+    GraphicsContext* gfxCtx = gPlayState->state.gfxCtx;
+    OPEN_DISPS(gfxCtx);
+    gsSPResetFB(OVERLAY_DISP++);
+    CLOSE_DISPS(gfxCtx);
+
+    auto interpreter = GetInterpreter();
+    if (interpreter != nullptr) {
+        interpreter->mCurDimensions.aspect_ratio = sSavedAspectRatio;
+    }
+    sHudPassPaused = true;
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool DualScreenHUD_ResumeHudPass(void) {
+#if defined(__ANDROID__)
+    if (!sHudPassActive || !sHudPassPaused || gPlayState == nullptr || sHudFramebufferId < 0) {
+        return false;
+    }
+
+    auto interpreter = GetInterpreter();
+    if (interpreter == nullptr) {
+        return false;
+    }
+    interpreter->mCurDimensions.aspect_ratio = static_cast<float>(kHudWidth) / static_cast<float>(kHudHeight);
+
+    GraphicsContext* gfxCtx = gPlayState->state.gfxCtx;
+    OPEN_DISPS(gfxCtx);
+    gsSPSetFB(OVERLAY_DISP++, sHudFramebufferId);
+    CLOSE_DISPS(gfxCtx);
+
+    sHudPassPaused = false;
     return true;
 #else
     return false;
@@ -89,7 +137,7 @@ void DualScreenHUD_EndHudPass(void) {
         return;
     }
 
-    if (gPlayState != nullptr) {
+    if (!sHudPassPaused && gPlayState != nullptr) {
         GraphicsContext* gfxCtx = gPlayState->state.gfxCtx;
         OPEN_DISPS(gfxCtx);
         gsSPResetFB(OVERLAY_DISP++);
@@ -101,6 +149,7 @@ void DualScreenHUD_EndHudPass(void) {
         interpreter->mCurDimensions.aspect_ratio = sSavedAspectRatio;
     }
     sHudPassActive = false;
+    sHudPassPaused = false;
 #endif
 }
 

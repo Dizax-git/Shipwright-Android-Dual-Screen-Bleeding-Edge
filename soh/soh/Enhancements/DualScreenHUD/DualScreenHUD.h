@@ -9,6 +9,8 @@ extern "C" {
 
 void DualScreenHUD_InitFramebuffer(void);
 bool DualScreenHUD_BeginHudPass(void);
+bool DualScreenHUD_PauseHudPass(void);
+bool DualScreenHUD_ResumeHudPass(void);
 void DualScreenHUD_EndHudPass(void);
 void DualScreenHUD_PresentFrame(void);
 bool DualScreenHUD_IsActive(void);

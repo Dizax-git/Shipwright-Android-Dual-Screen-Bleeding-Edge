@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 import android.content.Context;
 import android.os.Build;
@@ -39,6 +40,15 @@ public class SDLControllerManager
     protected static SDLHapticHandler mHapticHandler;
 
     private static final String TAG = "SDLControllerManager";
+    private static final String[] INVALID_GAMEPAD_NAME_FRAGMENTS = {
+        "uinput-fpc",
+        "uinput-fortsense",
+        "uinput-goodix",
+        "uinput-synaptics",
+        "uinput-elan",
+        "uinput-vfs",
+        "uinput-atrus"
+    };
 
     public static void initialize() {
         if (mJoystickHandler == null) {
@@ -100,6 +110,9 @@ public class SDLControllerManager
         if ((device == null) || (deviceId < 0)) {
             return false;
         }
+        if (isInvalidGamepadName(device.getName())) {
+            return false;
+        }
         int sources = device.getSources();
 
         /* This is called for every button press, so let's not spam the logs */
@@ -119,6 +132,20 @@ public class SDLControllerManager
                 ((sources & InputDevice.SOURCE_DPAD) == InputDevice.SOURCE_DPAD) ||
                 ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD)
         );
+    }
+
+    private static boolean isInvalidGamepadName(String deviceName) {
+        if (deviceName == null || deviceName.isEmpty()) {
+            return true;
+        }
+
+        String normalizedName = deviceName.toLowerCase(Locale.ROOT);
+        for (String invalidName : INVALID_GAMEPAD_NAME_FRAGMENTS) {
+            if (normalizedName.contains(invalidName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }
