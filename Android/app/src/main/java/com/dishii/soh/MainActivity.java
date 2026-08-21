@@ -85,6 +85,7 @@ public class MainActivity extends SDLActivity{
         }
 
         setupControllerOverlay();
+        attachControllerOverlayToPrimary();
         attachController();
         dualScreenManager = new DualScreenManager(this);
 
@@ -634,11 +635,6 @@ public class MainActivity extends SDLActivity{
                 FrameLayout.LayoutParams.MATCH_PARENT
         );
         overlayView.setLayoutParams(layoutParams);
-        // Add overlay view to the main layout (you may need to add it to a container like FrameLayout)
-        ViewGroup view = (ViewGroup) findViewById(android.R.id.content);
-        view.addView(overlayView);
-        view.setKeepScreenOn(true);
-
         final ViewGroup buttonGroup = overlayView.findViewById(R.id.button_group);
 
         buttonA = overlayView.findViewById(R.id.buttonA);
@@ -712,6 +708,22 @@ public class MainActivity extends SDLActivity{
             overlayView.getViewTreeObserver().addOnGlobalLayoutListener(gestureListener);
         }
 
+    }
+
+    void attachControllerOverlay(ViewGroup host) {
+        if (overlayView == null || host == null || overlayView.getParent() == host) {
+            return;
+        }
+        if (overlayView.getParent() instanceof ViewGroup) {
+            ((ViewGroup) overlayView.getParent()).removeView(overlayView);
+        }
+        host.addView(overlayView);
+        host.setKeepScreenOn(true);
+        overlayView.requestLayout();
+    }
+
+    void attachControllerOverlayToPrimary() {
+        attachControllerOverlay((ViewGroup) findViewById(android.R.id.content));
     }
 
     private void setupToggleButton(Button button, ViewGroup uiGroup){
