@@ -2,6 +2,7 @@
 param(
     [Parameter(Mandatory)][string] $Apk,
     [Parameter(Mandatory)][string] $ExpectedVersion,
+    [Parameter(Mandatory)][int64] $ExpectedVersionCode,
     [Parameter(Mandatory)][string] $ExpectedSignerSha256,
     [string] $Aapt2,
     [string] $Zipalign,
@@ -89,6 +90,9 @@ if ($package -ne 'com.dishii.soh') {
 }
 if ($versionName -ne $ExpectedVersion) {
     throw "APK version mismatch. Expected $ExpectedVersion but found $versionName."
+}
+if ([int64] $versionCode -ne $ExpectedVersionCode) {
+    throw "APK versionCode mismatch. Expected $ExpectedVersionCode but found $versionCode."
 }
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
