@@ -21,6 +21,7 @@ function New-TestApk {
     )
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
+    Add-Type -AssemblyName System.IO.Compression
     if (Test-Path -LiteralPath $Path) {
         Remove-Item -LiteralPath $Path -Force
     }
@@ -60,22 +61,16 @@ Describe 'Shipwright Android APK release contract' {
         $script:aapt2 = Join-Path $TestDrive 'aapt2.cmd'
         $script:zipalign = Join-Path $TestDrive 'zipalign.cmd'
         $script:apksigner = Join-Path $TestDrive 'apksigner.cmd'
-        "@echo package: name='com.dishii.soh' versionCode='902032' versionName='9.2.3-dual-screen.2'`r`n@echo native-code: 'arm64-v8a'" |
+        "@echo package: name='com.dishii.soh' versionCode='902003003' versionName='9.2.3.3'`r`n@echo native-code: 'arm64-v8a'" |
             Set-Content -LiteralPath $aapt2 -Encoding Ascii
         '@exit /b 0' | Set-Content -LiteralPath $zipalign -Encoding Ascii
         "@echo Verifies`r`n@echo Signer #1 certificate SHA-256 digest: $expectedSigner" |
             Set-Content -LiteralPath $apksigner -Encoding Ascii
     }
 
-    It 'uses a monotonic dual-screen release version' {
-        $gradle = Get-Content -LiteralPath $gradlePath -Raw
-        $gradle | Should Match 'versionCode\s+902032'
-        $gradle | Should Match 'versionName\s+"9\.2\.3-dual-screen\.2"'
-    }
-
     It 'accepts the exact package, version, ABI, alignment, signer and payload contract' {
         Test-Throws {
-            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3-dual-screen.2' `
+            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.3' -ExpectedVersionCode 902003003 `
                 -ExpectedSignerSha256 $expectedSigner -Aapt2 $aapt2 -Zipalign $zipalign -Apksigner $apksigner
         } | Should Be $false
     }
@@ -83,7 +78,7 @@ Describe 'Shipwright Android APK release contract' {
     It 'rejects a signer mismatch with expected and actual evidence' {
         $message = $null
         try {
-            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3-dual-screen.2' `
+            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.3' -ExpectedVersionCode 902003003 `
                 -ExpectedSignerSha256 ('0' * 64) -Aapt2 $aapt2 -Zipalign $zipalign -Apksigner $apksigner
         }
         catch { $message = $_.Exception.Message }
@@ -95,7 +90,7 @@ Describe 'Shipwright Android APK release contract' {
         Remove-Item -LiteralPath $apk -Force
         New-TestApk -Path $apk -Entries @('lib/arm64-v8a/libmain.so', 'assets/soh.o2r', 'assets/game.z64')
         Test-Throws {
-            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3-dual-screen.2' `
+            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.3' -ExpectedVersionCode 902003003 `
                 -ExpectedSignerSha256 $expectedSigner -Aapt2 $aapt2 -Zipalign $zipalign -Apksigner $apksigner
         } | Should Be $true
     }

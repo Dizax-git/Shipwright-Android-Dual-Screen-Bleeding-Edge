@@ -1,6 +1,22 @@
 def buildAsLibrary = project.hasProperty('BUILD_AS_LIBRARY');
 def buildAsApplication = !buildAsLibrary
 def generatedCanonicalAssets = layout.buildDirectory.dir('generated/canonicalAssets')
+def androidVersionProperties = new Properties()
+def androidVersionFile = rootProject.file('version.properties')
+if (!androidVersionFile.isFile()) {
+    throw new GradleException("Missing Android version manifest: ${androidVersionFile}")
+}
+androidVersionFile.withInputStream { androidVersionProperties.load(it) }
+def androidVersionName = androidVersionProperties.getProperty('versionName')
+def androidVersionCode = androidVersionProperties.getProperty('versionCode')?.toInteger()
+def releaseTag = androidVersionProperties.getProperty('releaseTag')
+if (!androidVersionName || !androidVersionCode || !releaseTag) {
+    throw new GradleException('version.properties must define versionName, versionCode, and releaseTag')
+}
+def requestedGitTag = System.getenv('GIT_TAG')
+if (requestedGitTag && requestedGitTag != releaseTag) {
+    throw new GradleException("GIT_TAG ${requestedGitTag} does not match version manifest ${releaseTag}")
+}
 
 def syncSupportedRomHashes = tasks.register('syncSupportedRomHashes', Copy) {
     from rootProject.file('../docs/supportedHashes.json')
@@ -26,9 +42,8 @@ android {
         }
         minSdkVersion 24
         targetSdkVersion 33
-        // Stable version encoded as major * 100000 + minor * 1000 + patch * 10 + local revision.
-        versionCode 902032
-        versionName "9.2.3-dual-screen.2"
+        versionCode androidVersionCode
+        versionName androidVersionName
     }
     signingConfigs {
         release {
@@ -75,8 +90,7 @@ android {
             def versionName = variant.versionName
             def versionCode = variant.versionCode
 
-            def gitTag = System.getenv("GIT_TAG") ?: "v${versionName}"
-            def newApkName = "soh_${buildType}_${gitTag}.apk"
+            def newApkName = "Shipwright-Android-Dual-Screen-Bleeding-Edge-${releaseTag}.apk"
             outputFileName = newApkName
         }
     }
