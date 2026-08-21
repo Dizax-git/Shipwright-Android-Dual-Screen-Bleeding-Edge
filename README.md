@@ -1,10 +1,22 @@
 # Shipwright Android Dual Screen — Bleeding Edge
 
-This is an **unofficial, source-only Android dual-screen port** of [HarbourMasters/Shipwright](https://github.com/HarbourMasters/Shipwright). It keeps the dual-screen implementation from [chilhaps/Shipwright-Android-Dual-Screen](https://github.com/chilhaps/Shipwright-Android-Dual-Screen), adapts it to the current renderer, and layers it over the newest validated **stable** Shipwright release with the modern Android compatibility work derived from [please-be-nice/Shipwright-android](https://github.com/please-be-nice/Shipwright-android).
+This is an **unofficial Android dual-screen port** of [HarbourMasters/Shipwright](https://github.com/HarbourMasters/Shipwright). It keeps the dual-screen implementation from [chilhaps/Shipwright-Android-Dual-Screen](https://github.com/chilhaps/Shipwright-Android-Dual-Screen), adapts it to the current renderer, and layers it over the newest validated **stable** Shipwright release with the modern Android compatibility work derived from [please-be-nice/Shipwright-android](https://github.com/please-be-nice/Shipwright-android).
 
 “Bleeding Edge” means this repository is intended to follow the latest stable upstream Shipwright release. It does not use Shipwright development/nightly builds as its release base.
 
 Current base: Shipwright `9.2.3` (`cb71e22a79bc5d1f688fa881795bbd93094895fc`). The exact source and submodule lineage is recorded in [Android provenance](docs/android/PROVENANCE.md), and the verified build contract is in [Android validation](docs/android/VALIDATION.md).
+
+## Download and game setup
+
+Download the persistently signed arm64 APK from [GitHub Releases](https://github.com/Darkaxt/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases). Release APKs use package `com.dishii.soh` and signer SHA-256 `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004`, so later releases can update an existing installation without changing signer identity.
+
+The APK contains the complete Android application, but it does **not** contain copyrighted Ocarina of Time game data and cannot play the game by itself. On first launch:
+
+1. Grant the app-specific file-access permission requested by Android.
+2. Let the app prepare its files under the device's `SOH` folder.
+3. Select a supported, legally obtained Ocarina of Time ROM when prompted. The app processes it locally into the required game archive. Alternatively, provide an already generated compatible `oot.o2r` or `oot-mq.o2r` in the `SOH` folder.
+
+The ROM, generated game archive, and saves remain user-owned content and are not included in this repository or its releases.
 
 ## Android dual-screen build
 
@@ -14,7 +26,7 @@ The Android app targets `arm64-v8a` with package `com.dishii.soh`. From the `And
 .\gradlew.bat :app:testReleaseUnitTest :app:assembleRelease
 ```
 
-The resulting APK is intentionally unsigned. Use your own persistent Android signing identity before installation or updates. This repository does not publish a private signing key, a locally signed APK, ROMs, generated game OTR/O2R files, saves, or other copyrighted game payloads.
+The APK produced directly by Gradle is intentionally unsigned. If you build from source, sign it with your own persistent Android identity; a self-signed build cannot update over the downloadable release unless it uses the same private identity. Release APKs are signed separately with the repository's persistent release identity. The private signing key, ROMs, generated game OTR/O2R files, saves, and other copyrighted game payloads are never published.
 
 Dual-screen routing is enabled by default on supported Android devices. If no suitable secondary presentation display exists, rendering safely remains on the primary display.
 
