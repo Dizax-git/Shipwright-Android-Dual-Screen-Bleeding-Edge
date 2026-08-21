@@ -8,11 +8,18 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Enumeration;
 import java.util.Locale;
 import java.util.Set;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipFile;
 
 final class RomImportService {
     static final long MAX_ROM_BYTES = 64L * 1024 * 1024;
+    static final long MAX_ARCHIVE_BYTES = 512L * 1024 * 1024;
+    static final long MAX_EXPANDED_CANDIDATE_BYTES = 512L * 1024 * 1024;
+    static final long RATIO_CHECK_THRESHOLD_BYTES = 1024L * 1024;
+    static final long MAX_COMPRESSION_RATIO = 200;
     private static final int BUFFER_SIZE = 64 * 1024;
 
     enum Error {
@@ -62,47 +69,152 @@ final class RomImportService {
     }
 
     Result importFile(File source, String displayName, Set<String> supportedHashes) {
-        if (source == null || displayName == null || supportedHashes == null
-                || !displayName.toLowerCase(Locale.ROOT).endsWith(".z64")) {
+        if (source == null || displayName == null || supportedHashes == null) {
             return Result.failure(Error.UNSUPPORTED_INPUT);
         }
 
-        File candidate = null;
+        String lowerName = displayName.toLowerCase(Locale.ROOT);
         try {
             ensureWorkDirectory();
-            candidate = File.createTempFile("rom-candidate-", ".z64", workDirectory);
-            String sha1;
-            try (InputStream input = new FileInputStream(source);
-                 OutputStream output = new FileOutputStream(candidate)) {
-                sha1 = copyAndHash(input, output);
+            if (lowerName.endsWith(".zip")) {
+                if (source.length() > MAX_ARCHIVE_BYTES) {
+                    return Result.failure(Error.UNSAFE_ARCHIVE);
+                }
+                return importZip(source, supportedHashes);
             }
-            if (!supportedHashes.contains(sha1)) {
-                deleteQuietly(candidate);
-                return Result.failure(Error.NO_SUPPORTED_ROM);
+            if (!lowerName.endsWith(".z64")) {
+                return Result.failure(Error.UNSUPPORTED_INPUT);
             }
-            return Result.success(candidate);
+            return importRaw(source, supportedHashes);
+        } catch (EncryptedArchiveException e) {
+            return Result.failure(Error.ENCRYPTED_ARCHIVE);
         } catch (UnsafeInputException e) {
-            deleteQuietly(candidate);
             return Result.failure(Error.UNSAFE_ARCHIVE);
         } catch (IOException e) {
-            deleteQuietly(candidate);
             return Result.failure(Error.IO_ERROR);
         }
     }
 
-    private String copyAndHash(InputStream input, OutputStream output) throws IOException, UnsafeInputException {
+    private Result importRaw(File source, Set<String> supportedHashes) throws IOException, UnsafeInputException {
+        Candidate candidate;
+        try (InputStream input = new FileInputStream(source)) {
+            candidate = copyAndHash(input);
+        }
+        if (!supportedHashes.contains(candidate.sha1)) {
+            deleteQuietly(candidate.file);
+            return Result.failure(Error.NO_SUPPORTED_ROM);
+        }
+        return Result.success(candidate.file);
+    }
+
+    private Result importZip(File source, Set<String> supportedHashes)
+            throws IOException, UnsafeInputException, EncryptedArchiveException {
+        Candidate accepted = null;
+        long expandedTotal = 0;
+        try (ZipFile zip = ZipFile.builder().setFile(source).get()) {
+            Enumeration<ZipArchiveEntry> entries = zip.getEntries();
+            while (entries.hasMoreElements()) {
+                ZipArchiveEntry entry = entries.nextElement();
+                if (entry.isDirectory() || !isZ64(entry.getName())) {
+                    continue;
+                }
+                validateEntryName(entry.getName());
+                if (entry.getGeneralPurposeBit().usesEncryption()) {
+                    throw new EncryptedArchiveException();
+                }
+                validateDeclaredSize(entry.getSize());
+
+                Candidate candidate;
+                try (InputStream input = zip.getInputStream(entry)) {
+                    candidate = copyAndHash(input);
+                }
+                try {
+                    expandedTotal = addExpandedBytes(expandedTotal, candidate.size);
+                    validateCompressionRatio(candidate.size, entry.getCompressedSize());
+                } catch (UnsafeInputException e) {
+                    deleteQuietly(candidate.file);
+                    throw e;
+                }
+
+                if (!supportedHashes.contains(candidate.sha1)) {
+                    deleteQuietly(candidate.file);
+                    continue;
+                }
+                if (accepted != null) {
+                    deleteQuietly(accepted.file);
+                    deleteQuietly(candidate.file);
+                    return Result.failure(Error.MULTIPLE_SUPPORTED_ROMS);
+                }
+                accepted = candidate;
+            }
+        } catch (IOException | UnsafeInputException | EncryptedArchiveException e) {
+            if (accepted != null) {
+                deleteQuietly(accepted.file);
+            }
+            throw e;
+        }
+
+        if (accepted == null) {
+            return Result.failure(Error.NO_SUPPORTED_ROM);
+        }
+        return Result.success(accepted.file);
+    }
+
+    private Candidate copyAndHash(InputStream input) throws IOException, UnsafeInputException {
         MessageDigest sha1 = sha1();
+        File candidate = File.createTempFile("rom-candidate-", ".z64", workDirectory);
         byte[] buffer = new byte[BUFFER_SIZE];
         long written = 0;
-        for (int read; (read = input.read(buffer)) != -1;) {
-            written += read;
-            if (written > MAX_ROM_BYTES) {
+        try (OutputStream output = new FileOutputStream(candidate)) {
+            for (int read; (read = input.read(buffer)) != -1;) {
+                written += read;
+                if (written > MAX_ROM_BYTES) {
+                    throw new UnsafeInputException();
+                }
+                sha1.update(buffer, 0, read);
+                output.write(buffer, 0, read);
+            }
+        } catch (IOException | UnsafeInputException e) {
+            deleteQuietly(candidate);
+            throw e;
+        }
+        return new Candidate(candidate, hex(sha1.digest()), written);
+    }
+
+    private static boolean isZ64(String name) {
+        return name != null && name.toLowerCase(Locale.ROOT).endsWith(".z64");
+    }
+
+    private static void validateEntryName(String name) throws UnsafeInputException {
+        String normalized = name.replace('\\', '/');
+        if (normalized.startsWith("/") || normalized.matches("^[A-Za-z]:.*")) {
+            throw new UnsafeInputException();
+        }
+        for (String segment : normalized.split("/")) {
+            if (segment.equals("..")) {
                 throw new UnsafeInputException();
             }
-            sha1.update(buffer, 0, read);
-            output.write(buffer, 0, read);
         }
-        return hex(sha1.digest());
+    }
+
+    private static void validateDeclaredSize(long size) throws UnsafeInputException {
+        if (size > MAX_ROM_BYTES) {
+            throw new UnsafeInputException();
+        }
+    }
+
+    private static long addExpandedBytes(long current, long added) throws UnsafeInputException {
+        if (added > MAX_EXPANDED_CANDIDATE_BYTES - current) {
+            throw new UnsafeInputException();
+        }
+        return current + added;
+    }
+
+    private static void validateCompressionRatio(long expanded, long compressed) throws UnsafeInputException {
+        if (expanded >= RATIO_CHECK_THRESHOLD_BYTES && compressed > 0
+                && expanded / compressed > MAX_COMPRESSION_RATIO) {
+            throw new UnsafeInputException();
+        }
     }
 
     private void ensureWorkDirectory() throws IOException {
@@ -134,5 +246,20 @@ final class RomImportService {
     }
 
     private static final class UnsafeInputException extends Exception {
+    }
+
+    private static final class EncryptedArchiveException extends Exception {
+    }
+
+    private static final class Candidate {
+        final File file;
+        final String sha1;
+        final long size;
+
+        Candidate(File file, String sha1, long size) {
+            this.file = file;
+            this.sha1 = sha1;
+            this.size = size;
+        }
     }
 }
