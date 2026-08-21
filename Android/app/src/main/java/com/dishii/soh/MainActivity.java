@@ -8,6 +8,10 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
+import android.system.ErrnoException;
+import android.system.Os;
 
 import android.provider.Settings;
 import java.io.File;
@@ -15,7 +19,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -55,6 +61,7 @@ public class MainActivity extends SDLActivity{
     private volatile boolean mIsAiming = false;
     private static final int COPY_BUFFER_SIZE = 65536;
     private static final int RUMBLE_MAX_DURATION_MS = 5000;
+    private final ExecutorService romImportExecutor = Executors.newSingleThreadExecutor();
     private DualScreenManager dualScreenManager;
 
     @Override
@@ -343,31 +350,11 @@ public class MainActivity extends SDLActivity{
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == FILE_PICKER_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
-            // Handle file selection
             Uri selectedFileUri = data.getData();
-            String fileName = "OOT.z64";
-
-            File destinationDirectory = new File(Environment.getExternalStorageDirectory(), "SOH");
-            File destinationFile = new File(destinationDirectory, fileName);
-
             if (selectedFileUri != null) {
-                destinationFile.delete();
-                try (InputStream in = getContentResolver().openInputStream(selectedFileUri);
-                     OutputStream out = new FileOutputStream(destinationFile)) {
-                    byte[] buffer = new byte[COPY_BUFFER_SIZE];
-                    int bytesRead;
-                    while ((bytesRead = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, bytesRead);
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            if (destinationFile.exists() && destinationFile.length() > 0) {
-                nativeHandleSelectedFile(destinationFile.getPath());
+                Toast.makeText(this, "Checking selected ROM...", Toast.LENGTH_SHORT).show();
+                importSelectedRom(selectedFileUri);
             } else {
-                runOnUiThread(() -> Toast.makeText(this, "Failed to copy ROM file", Toast.LENGTH_LONG).show());
                 nativeHandleSelectedFile(null);
             }
 
@@ -405,7 +392,155 @@ public class MainActivity extends SDLActivity{
     public void openFilePicker() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
+                "application/octet-stream",
+                "application/zip",
+                "application/x-7z-compressed"
+        });
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
         runOnUiThread(() -> startActivityForResult(intent, 0));
+    }
+
+    private void importSelectedRom(Uri selectedFileUri) {
+        romImportExecutor.execute(() -> {
+            File importDirectory = new File(getCacheDir(), "rom-import");
+            File selectedFile = null;
+            File candidate = null;
+            File pending = null;
+            try {
+                ensureDirectory(importDirectory);
+                selectedFile = materializeSelection(selectedFileUri, importDirectory);
+                Set<String> supportedHashes;
+                try (InputStream hashes = getAssets().open("supportedHashes.json")) {
+                    supportedHashes = SupportedRomHashes.load(hashes);
+                }
+
+                RomImportService service = new RomImportService(importDirectory);
+                RomImportService.Result result = service.importFile(
+                        selectedFile, queryDisplayName(selectedFileUri), supportedHashes);
+                if (!result.isSuccess()) {
+                    finishRomImport(null, messageFor(result.getError()));
+                    return;
+                }
+
+                candidate = result.getCandidate();
+                File destinationDirectory = new File(Environment.getExternalStorageDirectory(), "SOH");
+                ensureDirectory(destinationDirectory);
+                File destination = new File(destinationDirectory, "OOT.z64");
+                pending = new File(destinationDirectory, "OOT.z64.pending");
+                deleteQuietly(pending);
+                copyAndSync(candidate, pending);
+                Os.rename(pending.getAbsolutePath(), destination.getAbsolutePath());
+                pending = null;
+                finishRomImport(destination.getPath(), "Supported ROM imported");
+            } catch (IOException | ErrnoException e) {
+                finishRomImport(null, "Could not import the selected ROM");
+            } finally {
+                deleteQuietly(pending);
+                deleteQuietly(candidate);
+                deleteQuietly(selectedFile);
+                deleteDirectoryIfEmpty(importDirectory);
+            }
+        });
+    }
+
+    private File materializeSelection(Uri uri, File importDirectory) throws IOException {
+        File selected = File.createTempFile("selected-", ".input", importDirectory);
+        long copied = 0;
+        try (InputStream input = getContentResolver().openInputStream(uri);
+             OutputStream output = new FileOutputStream(selected)) {
+            if (input == null) {
+                throw new IOException("Selected document is unavailable");
+            }
+            byte[] buffer = new byte[COPY_BUFFER_SIZE];
+            for (int read; (read = input.read(buffer)) != -1;) {
+                copied += read;
+                if (copied > RomImportService.MAX_ARCHIVE_BYTES) {
+                    throw new IOException("Selected document is too large");
+                }
+                output.write(buffer, 0, read);
+            }
+        } catch (IOException e) {
+            deleteQuietly(selected);
+            throw e;
+        }
+        return selected;
+    }
+
+    private String queryDisplayName(Uri uri) {
+        try (Cursor cursor = getContentResolver().query(
+                uri, new String[] { OpenableColumns.DISPLAY_NAME }, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) {
+                    String value = cursor.getString(index);
+                    if (value != null && !value.isEmpty()) {
+                        return value;
+                    }
+                }
+            }
+        } catch (RuntimeException ignored) {
+        }
+        String fallback = uri.getLastPathSegment();
+        return fallback == null ? "selection" : fallback;
+    }
+
+    private static void copyAndSync(File source, File destination) throws IOException {
+        try (InputStream input = new java.io.FileInputStream(source);
+             FileOutputStream output = new FileOutputStream(destination)) {
+            byte[] buffer = new byte[COPY_BUFFER_SIZE];
+            for (int read; (read = input.read(buffer)) != -1;) {
+                output.write(buffer, 0, read);
+            }
+            output.flush();
+            output.getFD().sync();
+        }
+    }
+
+    private void finishRomImport(String path, String message) {
+        runOnUiThread(() -> {
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+            nativeHandleSelectedFile(path);
+        });
+    }
+
+    private static String messageFor(RomImportService.Error error) {
+        switch (error) {
+            case NO_SUPPORTED_ROM:
+                return "No supported .z64 ROM was found";
+            case MULTIPLE_SUPPORTED_ROMS:
+                return "The archive contains multiple supported ROMs";
+            case ENCRYPTED_ARCHIVE:
+                return "Encrypted archives are not supported";
+            case UNSAFE_ARCHIVE:
+                return "The selected archive exceeds safe import limits";
+            case UNSUPPORTED_INPUT:
+                return "Select a .z64, .zip, or .7z file";
+            default:
+                return "Could not read the selected ROM";
+        }
+    }
+
+    private static void ensureDirectory(File directory) throws IOException {
+        if ((!directory.isDirectory() && !directory.mkdirs()) || !directory.isDirectory()) {
+            throw new IOException("Required directory is unavailable");
+        }
+    }
+
+    private static void deleteQuietly(File file) {
+        if (file != null && file.exists()) {
+            file.delete();
+        }
+    }
+
+    private static void deleteDirectoryIfEmpty(File directory) {
+        if (directory == null || !directory.isDirectory()) {
+            return;
+        }
+        File[] children = directory.listFiles();
+        if (children != null && children.length == 0) {
+            directory.delete();
+        }
     }
 
     // Check if external storage is available and writable
@@ -459,6 +594,7 @@ public class MainActivity extends SDLActivity{
         if (dualScreenManager != null) {
             dualScreenManager.stop();
         }
+        romImportExecutor.shutdown();
         super.onDestroy();
     }
 
