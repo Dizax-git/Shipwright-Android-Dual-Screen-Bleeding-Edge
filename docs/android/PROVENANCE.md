@@ -111,8 +111,8 @@ The inventory compares official `9.2.3` to `android-reference/android-port-923` 
 | `soh/fixbaserom.py` | `M` | `required-android` |
 | `soh/include/functions.h` | `M` | `required-android` |
 | `soh/soh/Enhancements/BlueFireArrows.cpp` | `A` | `excluded-divergence` |
-| `soh/soh/Enhancements/Lang/Lang.cpp` | `A` | `required-android` |
-| `soh/soh/Enhancements/Lang/Lang.h` | `A` | `required-android` |
+| `soh/soh/Enhancements/Lang/Lang.cpp` | `A` | `excluded-divergence` |
+| `soh/soh/Enhancements/Lang/Lang.h` | `A` | `excluded-divergence` |
 | `soh/soh/Enhancements/bootcommands.c` | `M` | `accepted-android-feature` |
 | `soh/soh/Enhancements/controls/SohInputEditorWindow.cpp` | `M` | `accepted-android-feature` |
 | `soh/soh/Enhancements/customequipment.cpp` | `M` | `excluded-divergence` |

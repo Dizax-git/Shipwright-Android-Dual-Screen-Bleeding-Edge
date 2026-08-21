@@ -49,9 +49,16 @@ Describe 'verify-provenance.ps1' {
 | local | HEAD | $wrongSha |
 "@ | Set-Content -LiteralPath (Join-Path $fixtureRoot 'docs\android\PROVENANCE.md')
 
-        & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scriptUnderTest -Repository $fixtureRoot 2>&1 | Out-Null
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scriptUnderTest -Repository $fixtureRoot 2>&1 | Out-Null
+            $exitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
 
-        $LASTEXITCODE | Should Not Be 0
+        $exitCode | Should Not Be 0
     }
 
     It 'rejects abbreviated commit IDs' {
@@ -64,8 +71,15 @@ Describe 'verify-provenance.ps1' {
 | local | HEAD | $shortSha |
 "@ | Set-Content -LiteralPath (Join-Path $fixtureRoot 'docs\android\PROVENANCE.md')
 
-        & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scriptUnderTest -Repository $fixtureRoot 2>&1 | Out-Null
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scriptUnderTest -Repository $fixtureRoot 2>&1 | Out-Null
+            $exitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
 
-        $LASTEXITCODE | Should Not Be 0
+        $exitCode | Should Not Be 0
     }
 }
