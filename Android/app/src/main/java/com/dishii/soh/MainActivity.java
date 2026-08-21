@@ -34,6 +34,7 @@ import android.widget.FrameLayout;
 import android.graphics.Rect;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.Surface;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
@@ -54,6 +55,7 @@ public class MainActivity extends SDLActivity{
     private volatile boolean mIsAiming = false;
     private static final int COPY_BUFFER_SIZE = 65536;
     private static final int RUMBLE_MAX_DURATION_MS = 5000;
+    private DualScreenManager dualScreenManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,6 +79,7 @@ public class MainActivity extends SDLActivity{
 
         setupControllerOverlay();
         attachController();
+        dualScreenManager = new DualScreenManager(this);
 
         Log.i("SoH", "onCreate complete");
     }
@@ -426,16 +429,37 @@ public class MainActivity extends SDLActivity{
     public native void nativeGamepadBackPressed();
     // Injects a directional menu nav key: dir 0=up 1=down 2=left 3=right.
     public native void nativeMenuNavKey(int dir, boolean pressed);
+    public native void nativeSecondaryDisplaySurfaceChanged(Surface surface, int width, int height);
+    public native void nativeSecondaryDisplaySurfaceDestroyed();
 
     public void SetFirstPersonAimingActive(boolean active) {
         mIsAiming = active;
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (dualScreenManager != null) {
+            dualScreenManager.start();
+        }
+    }
+
+    @Override
     protected void onPause() {
-        super.onPause();
+        if (dualScreenManager != null) {
+            dualScreenManager.stop();
+        }
         setItemButtonHeld(false);
         mIsAiming = false;
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (dualScreenManager != null) {
+            dualScreenManager.stop();
+        }
+        super.onDestroy();
     }
 
     @Override
