@@ -41,6 +41,7 @@
 #include "soh/Enhancements/randomizer/settings.h"
 #include "soh/Enhancements/savestates.h"
 #include "soh/Enhancements/speedrun/Speedrun.h"
+#include "Enhancements/DualScreenHUD/DualScreenHUD.h"
 #include "frame_interpolation.h"
 #include "SohGui/SohMenu.h"
 #include "SohGui/SohGui.hpp"
@@ -1879,6 +1880,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
         wnd->DrawAndRunGraphicsCommands(Commands, mtx_replacements);
         intp->mInterpolationIndex++;
     }
+    DualScreenHUD_PresentFrame();
     ImGui::PopStyleColor();
 }
 
