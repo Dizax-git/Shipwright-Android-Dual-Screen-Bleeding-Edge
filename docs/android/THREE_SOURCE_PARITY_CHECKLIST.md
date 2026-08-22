@@ -92,8 +92,8 @@ Evidence: Java lifecycle tests, native routing tests, controller-overlay routing
 - [x] Descriptive release tag `v9.2.3-dual-screen.4` is validated against the version manifest.
 - [x] Gradle output naming, manifest metadata, APK verifier expectations, and release tag derive from the same manifest.
 - [x] Rebuild after all host-side parity gaps close and verify the final signed APK against package, version, ABI, alignment, signer, and forbidden-payload gates.
-- [ ] Publish exactly the verified signed `.4` artifact and checksum.
-- [ ] Verify the published GitHub release metadata and downloadable APK expose the `.4` version identity to updater clients.
+- [x] Publish exactly the verified signed `.4` artifact and checksum.
+- [x] Verify the published GitHub release metadata and downloadable APK expose the `.4` version identity to updater clients.
 
 ## Completion rule
 
