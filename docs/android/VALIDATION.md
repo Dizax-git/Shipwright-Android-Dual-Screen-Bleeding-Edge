@@ -108,7 +108,8 @@ Validated on 2026-08-22 from implementation commit `53736fb53` and official Ship
 | Alignment | `zipalign -c -P 16 4` passed |
 | Signature | `apksigner verify --verbose --print-certs` passed with exactly one pinned signer |
 | Payload | APK and nested `assets/soh.o2r` contain no ROM, OTR/O2R, save, state, or quest payload |
-| Publication | Pending public source push and GitHub release verification |
+| Publication | Public release `v9.2.3-dual-screen.4`; normal, non-draft, non-prerelease release with exactly one APK and its checksum |
+| Independent download | Downloaded through the GitHub release API into a separate staging directory; checksum sidecar, package, version, ABI, alignment, signer, and payload checks all passed |
 
 ## Archived ROM import release candidate
 
