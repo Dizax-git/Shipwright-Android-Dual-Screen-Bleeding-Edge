@@ -67,6 +67,7 @@ public class MainActivity extends SDLActivity{
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ImmersiveMode.apply(getWindow());
 
         Log.i("SoH", "onCreate start");
 
@@ -577,6 +578,15 @@ public class MainActivity extends SDLActivity{
         super.onResume();
         if (dualScreenManager != null) {
             dualScreenManager.start();
+        }
+        ImmersiveMode.apply(getWindow());
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            ImmersiveMode.apply(getWindow());
         }
     }
 

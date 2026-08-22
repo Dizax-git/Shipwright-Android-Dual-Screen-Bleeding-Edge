@@ -42,6 +42,7 @@ public final class DualScreenHudPresentation extends Presentation {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ImmersiveMode.apply(getWindow());
 
         FrameLayout root = new FrameLayout(getContext());
         SurfaceView surfaceView = new SurfaceView(getContext());
@@ -51,6 +52,20 @@ public final class DualScreenHudPresentation extends Presentation {
         setContentView(root, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         activity.attachControllerOverlay(root);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        ImmersiveMode.apply(getWindow());
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            ImmersiveMode.apply(getWindow());
+        }
     }
 
     void notifySurfaceDestroyedIfNeeded() {
