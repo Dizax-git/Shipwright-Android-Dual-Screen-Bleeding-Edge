@@ -14,6 +14,8 @@ The AYN Thor has a landscape primary gameplay display and a presentation-capable
 
 The **Dual-Screen HUD** option controls native HUD routing. It does not remove the touch controller. Hiding the controller with its eye button hides only the interactive overlay, allowing the lower display to remain a HUD-only panel for physical-controller play.
 
+Both Android windows use the same immersive-mode policy. The main SDL Activity restores it after creation, resume, and focus gain; the lower-display Presentation restores it after creation, start, and focus gain. This prevents either window lifecycle from leaving the upper game surface inset by Android system bars.
+
 ## Release identity
 
 `Android/version.properties` is the single build manifest. The APK uses a numeric four-component `versionName` for broad updater compatibility and a monotonic `versionCode` encoded as:

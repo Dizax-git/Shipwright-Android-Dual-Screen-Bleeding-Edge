@@ -86,6 +86,30 @@ Installed as a new package on AYN Thor `bfa98654` on 2026-08-21. No prior `com.d
 
 This is installation and launch evidence only. It does not claim that ROM setup, gameplay, HUD routing, or ten-minute play have been validated on the physical displays.
 
+## Dual-display immersive fullscreen release candidate
+
+Validated on 2026-08-22 from implementation commit `53736fb53` and official Shipwright `9.2.3`.
+
+| Check | Result |
+|---|---|
+| Regression cycle | `immersive-fullscreen.Tests.ps1` failed 3/3 before implementation and passed 3/3 afterward |
+| Full host tests | 49 Pester source/artifact-contract tests and 21 Java release unit tests passed |
+| Release build | `gradlew.bat --no-daemon :app:testReleaseUnitTest :app:assembleRelease` passed through native build, lint vital, and APK assembly |
+| Fullscreen policy | Shared helper applies edge-to-edge layout, hides all system bars with transient swipe reveal, and retains the legacy SDL immersive flags |
+| Lifecycle coverage | Main Activity: create/resume/focus gain; secondary Presentation: create/start/focus gain |
+| Read-only device evidence | Installed `.3` Activity window carried `FORCE_NOT_FULLSCREEN`; its 1920x1080 task snapshot reported 55-pixel top and bottom content insets |
+| Device actions | `adb devices`, `dumpsys window`, and `dumpsys package` only; the app was not launched, focused, installed, or controlled |
+| Package | `com.dishii.soh` |
+| Version | `versionName=9.2.3.4`, `versionCode=902003004` |
+| ABI | exactly `arm64-v8a` |
+| Unsigned size / SHA-256 | 53,836,200 bytes / `79860475672e1dc101c6c9045ffb1462b2d4a8b12a63b68d72d0d7f91ff0962b` |
+| Signed size / SHA-256 | 54,531,699 bytes / `e6644350a74a93eb789eda88cd64417dda7467ca27cfba4253af2612d185be35` |
+| Persistent signer SHA-256 | `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004` |
+| Alignment | `zipalign -c -P 16 4` passed |
+| Signature | `apksigner verify --verbose --print-certs` passed with exactly one pinned signer |
+| Payload | APK and nested `assets/soh.o2r` contain no ROM, OTR/O2R, save, state, or quest payload |
+| Publication | Pending public source push and GitHub release verification |
+
 ## Archived ROM import release candidate
 
 Validated on 2026-08-21 from implementation commits `e9ad65930079e94a9b81b41996f1c738fc3fe67d` through `2598051276b85c74f8488ccd84af9b9e4b3bf43e`.
