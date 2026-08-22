@@ -17,6 +17,10 @@ Describe 'Android continuous-integration parity contract' {
         $workflow | Should Match '(?s):app:testReleaseUnitTest.*?:app:assembleRelease'
     }
 
+    It 'restores the Gradle wrapper executable bit in the Linux runner' {
+        $workflow | Should Match '(?s)chmod \+x Android/gradlew.*?cd Android.*?\./gradlew --no-daemon'
+    }
+
     It 'generates the project-owned resource archive before packaging' {
         $workflow | Should Match 'GenerateSohOtr'
         $workflow | Should Match 'soh/soh\.o2r Android/app/src/main/assets/soh\.o2r'

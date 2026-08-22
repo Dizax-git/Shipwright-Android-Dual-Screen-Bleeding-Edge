@@ -33,6 +33,7 @@ jobs:
 
       - name: Test and assemble unsigned Android candidate
         run: |
+          chmod +x Android/gradlew
           cd Android
           ./gradlew --no-daemon :app:testReleaseUnitTest :app:assembleRelease
 
