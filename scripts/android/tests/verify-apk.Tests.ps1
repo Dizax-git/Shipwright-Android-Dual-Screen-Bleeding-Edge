@@ -61,7 +61,7 @@ Describe 'Shipwright Android APK release contract' {
         $script:aapt2 = Join-Path $TestDrive 'aapt2.cmd'
         $script:zipalign = Join-Path $TestDrive 'zipalign.cmd'
         $script:apksigner = Join-Path $TestDrive 'apksigner.cmd'
-        "@echo package: name='com.dishii.soh' versionCode='902003003' versionName='9.2.3.3'`r`n@echo native-code: 'arm64-v8a'" |
+        "@echo package: name='com.dishii.soh' versionCode='902003004' versionName='9.2.3.4'`r`n@echo native-code: 'arm64-v8a'" |
             Set-Content -LiteralPath $aapt2 -Encoding Ascii
         '@exit /b 0' | Set-Content -LiteralPath $zipalign -Encoding Ascii
         "@echo Verifies`r`n@echo Signer #1 certificate SHA-256 digest: $expectedSigner" |
@@ -70,7 +70,7 @@ Describe 'Shipwright Android APK release contract' {
 
     It 'accepts the exact package, version, ABI, alignment, signer and payload contract' {
         Test-Throws {
-            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.3' -ExpectedVersionCode 902003003 `
+            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.4' -ExpectedVersionCode 902003004 `
                 -ExpectedSignerSha256 $expectedSigner -Aapt2 $aapt2 -Zipalign $zipalign -Apksigner $apksigner
         } | Should Be $false
     }
@@ -78,7 +78,7 @@ Describe 'Shipwright Android APK release contract' {
     It 'rejects a signer mismatch with expected and actual evidence' {
         $message = $null
         try {
-            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.3' -ExpectedVersionCode 902003003 `
+            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.4' -ExpectedVersionCode 902003004 `
                 -ExpectedSignerSha256 ('0' * 64) -Aapt2 $aapt2 -Zipalign $zipalign -Apksigner $apksigner
         }
         catch { $message = $_.Exception.Message }
@@ -90,7 +90,7 @@ Describe 'Shipwright Android APK release contract' {
         Remove-Item -LiteralPath $apk -Force
         New-TestApk -Path $apk -Entries @('lib/arm64-v8a/libmain.so', 'assets/soh.o2r', 'assets/game.z64')
         Test-Throws {
-            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.3' -ExpectedVersionCode 902003003 `
+            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.4' -ExpectedVersionCode 902003004 `
                 -ExpectedSignerSha256 $expectedSigner -Aapt2 $aapt2 -Zipalign $zipalign -Apksigner $apksigner
         } | Should Be $true
     }

@@ -79,20 +79,21 @@ Evidence: Android unit tests, `verify-feature-parity.ps1`, `verify-apk.ps1`, sig
 - [x] Secondary display layers the native HUD surface below the complete touch-controller overlay.
 - [x] Removing/dismissing the secondary presentation reparents the same overlay to the primary display.
 - [x] The eye button hides only touch controls; it does not disable the secondary HUD.
+- [x] Both display windows restore immersive fullscreen after creation, resume/start, and focus changes.
 - [ ] Physical two-display behavior remains unclaimed until separately authorized runtime validation; host completion must not use ADB as a substitute.
 
-Evidence: Java lifecycle tests, native routing tests, controller-overlay routing tests, `waterdish-mobile-parity.Tests.ps1`, and `verify-feature-parity.ps1`.
+Evidence: Java lifecycle tests, native routing tests, controller-overlay routing tests, `immersive-fullscreen.Tests.ps1`, `waterdish-mobile-parity.Tests.ps1`, and `verify-feature-parity.ps1`.
 
 ## APK release identity
 
 - [x] `Android/version.properties` is the single version source.
-- [x] Numeric updater-safe `versionName=9.2.3.3`.
-- [x] Monotonic `versionCode=902003003`, greater than all prior `.1` and `.2` APK codes.
-- [x] Descriptive release tag `v9.2.3-dual-screen.3` is validated against the version manifest.
+- [x] Numeric updater-safe `versionName=9.2.3.4`.
+- [x] Monotonic `versionCode=902003004`, greater than all prior `.1`, `.2`, and `.3` APK codes.
+- [x] Descriptive release tag `v9.2.3-dual-screen.4` is validated against the version manifest.
 - [x] Gradle output naming, manifest metadata, APK verifier expectations, and release tag derive from the same manifest.
 - [x] Rebuild after all host-side parity gaps close and verify the final signed APK against package, version, ABI, alignment, signer, and forbidden-payload gates.
-- [x] Publish exactly the verified signed artifact and checksum.
-- [x] Verify the published GitHub release metadata and downloadable APK expose the new version identity to updater clients.
+- [ ] Publish exactly the verified signed `.4` artifact and checksum.
+- [ ] Verify the published GitHub release metadata and downloadable APK expose the `.4` version identity to updater clients.
 
 ## Completion rule
 
