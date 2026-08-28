@@ -158,3 +158,5 @@ Validated on 2026-08-28 from implementation commit `a1b69c4164bedf955a33ffc86fde
 | Signature | `apksigner verify --verbose --print-certs` passed with exactly one pinned signer |
 | Payload | APK and nested assets contain no raw ROM, user OTR/O2R, save, state, or quest payload |
 | Device actions | none; no ADB, installation, launch, or device control was performed |
+| Publication | Public release `9.2.3.5`; normal, non-draft, non-prerelease release with exactly one APK and its matching checksum sidecar |
+| Independent download | Downloaded through the GitHub release API into a separate `D:\Temp` directory; sidecar, package, numeric version, ABI, 16 KiB alignment, signer, signature, payload, and SHA-256 checks all passed |

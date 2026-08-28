@@ -92,8 +92,8 @@ Evidence: Java lifecycle tests, native routing tests, controller-overlay routing
 - [x] Numeric release tag `9.2.3.5` matches `versionName` and the APK filename; descriptive wording is confined to the release title.
 - [x] Gradle output naming, manifest metadata, APK verifier expectations, and release tag derive from the same manifest.
 - [x] Rebuild after all host-side parity gaps close and verify the final signed APK against package, version, ABI, alignment, signer, and forbidden-payload gates.
-- [ ] Publish exactly the verified signed `.5` artifact and checksum.
-- [ ] Verify the published GitHub release metadata and downloadable APK expose the `.5` version identity to updater clients.
+- [x] Publish exactly the verified signed `.5` artifact and checksum.
+- [x] Verify the published GitHub release metadata and downloadable APK expose the `.5` version identity to updater clients.
 
 ## Completion rule
 
