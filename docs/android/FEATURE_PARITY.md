@@ -14,6 +14,8 @@ The AYN Thor has a landscape primary gameplay display and a presentation-capable
 
 The **Dual-Screen HUD** option controls native HUD routing. It does not remove the touch controller. Hiding the controller with its eye button hides only the interactive overlay, allowing the lower display to remain a HUD-only panel for physical-controller play.
 
+The optional per-port modifier-stick layer converts M1 or M2 plus the left stick into the four N64 C-buttons before `PadMgr` derives button edges. The same sample's analog movement is suppressed while the modifier is held; unrelated buttons, right-stick camera input, and gyro input are preserved. `Set-TraditionalControllerLayout.ps1` provides a tested Xbox-style mapping with L1 as M1, L2 as Z, R1 as R, View as L, and the right stick reserved for free-look camera and aiming.
+
 Both Android windows use the same immersive-mode policy. The main SDL Activity restores it after creation, resume, and focus gain; the lower-display Presentation restores it after creation, start, and focus gain. This prevents either window lifecycle from leaving the upper game surface inset by Android system bars.
 
 ## Release identity
