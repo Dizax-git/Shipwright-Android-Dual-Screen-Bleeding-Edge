@@ -1626,6 +1626,33 @@ void SohInputEditorWindow::DrawLinkTab() {
         if (ImGui::CollapsingHeader("Modifier Buttons")) {
             DrawButtonLine("M1", portIndex, BTN_CUSTOM_MODIFIER1);
             DrawButtonLine("M2", portIndex, BTN_CUSTOM_MODIFIER2);
+
+            const auto enabledCVar = StringHelper::Sprintf(
+                "gSettings.Controllers.Port%d.ModifierStickCButtons.Enabled", portIndex + 1);
+            bool modifierStickEnabled = CVarGetInteger(enabledCVar.c_str(), 0) != 0;
+            if (ImGui::Checkbox(
+                    StringHelper::Sprintf("Left stick becomes C-buttons while modifier is held##port%d", portIndex)
+                        .c_str(),
+                    &modifierStickEnabled)) {
+                CVarSetInteger(enabledCVar.c_str(), modifierStickEnabled ? 1 : 0);
+                Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Hold the selected modifier and move the left stick to press the four C-buttons.\n"
+                                  "Normal movement resumes when the modifier is released.");
+            }
+
+            const auto modifierCVar = StringHelper::Sprintf(
+                "gSettings.Controllers.Port%d.ModifierStickCButtons.Modifier", portIndex + 1);
+            int32_t modifierIndex = CVarGetInteger(modifierCVar.c_str(), 1) == 2 ? 1 : 0;
+            ImGui::BeginDisabled(!modifierStickEnabled);
+            ImGui::SetNextItemWidth(SCALE_IMGUI_SIZE(90.0f));
+            if (ImGui::Combo(StringHelper::Sprintf("C-button modifier##port%d", portIndex).c_str(), &modifierIndex,
+                             "M1\0M2\0\0")) {
+                CVarSetInteger(modifierCVar.c_str(), modifierIndex + 1);
+                Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+            }
+            ImGui::EndDisabled();
         }
 
         if (ImGui::CollapsingHeader("Ocarina Controls")) {
