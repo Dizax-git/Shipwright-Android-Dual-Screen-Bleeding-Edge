@@ -30,6 +30,32 @@ The APK produced directly by Gradle is intentionally unsigned. If you build from
 
 Dual-screen routing is enabled by default on supported Android devices. On the AYN Thor, gameplay and menus remain on the upper display while the gameplay HUD and touch-controller overlay use the lower display. The eye button hides the controller layer for physical-controller play without disabling the lower HUD. If no suitable secondary presentation display exists, both the normal HUD and touch controller safely return to the primary display.
 
+### Traditional controller layout
+
+This port adds an optional **modifier + left stick** C-button layer under **Settings > Controls > Modifier Buttons**. Enable it and select M1 or M2; while that modifier is held, the left stick presses C-Left, C-Right, C-Up, or C-Down instead of moving Link. The feature uses dominant-axis selection plus hysteresis, so diagonal input produces one stable C-button rather than two flickering inputs.
+
+The included `scripts/android/Set-TraditionalControllerLayout.ps1` applies this Xbox-style profile to an existing `shipofharkinian.json` while preserving keyboard mappings and unrelated settings:
+
+| Physical input | Shipwright action |
+| --- | --- |
+| Left stick | Analog movement |
+| Right stick | Camera and aiming |
+| L1 + left stick | Four C-buttons |
+| L2 | Z |
+| R1 | R |
+| View / Back | L |
+| A / B | N64 A / B |
+| Start | Start |
+| D-pad | N64 D-pad |
+
+With Shipwright closed, run:
+
+```powershell
+.\scripts\android\Set-TraditionalControllerLayout.ps1 -Path 'C:\path\to\shipofharkinian.json'
+```
+
+The updater validates the rewritten JSON and replaces the original atomically without creating a backup file.
+
 Android release identity is defined once in `Android/version.properties`. APK version names use a numeric four-component form such as `9.2.3.3`, while GitHub tags retain the descriptive form `v9.2.3-dual-screen.3`. Both the APK verifier and build reject mismatched version metadata so every published revision remains a real Android update.
 
 The preserved feature contract from the official, Waterdish Android, and Chilhaps dual-screen sources is recorded in [Android feature parity](docs/android/FEATURE_PARITY.md).
