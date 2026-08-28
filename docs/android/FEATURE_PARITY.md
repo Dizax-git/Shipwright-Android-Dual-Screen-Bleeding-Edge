@@ -24,7 +24,7 @@ Both Android windows use the same immersive-mode policy. The main SDL Activity r
 
 `major * 100000000 + minor * 1000000 + patch * 1000 + portRevision`
 
-The descriptive release tag remains `v<upstream>-dual-screen.<revision>`. `Get-AndroidReleaseVersion.ps1`, Gradle, and `verify-apk.ps1` reject inconsistent names, codes, tags, or release artifacts before publication.
+The release tag is the same numeric four-component value as Android `versionName`. `Get-AndroidReleaseVersion.ps1`, Gradle, and `verify-apk.ps1` reject inconsistent names, codes, tags, or release artifacts before publication.
 
 ## Repeatable audit
 

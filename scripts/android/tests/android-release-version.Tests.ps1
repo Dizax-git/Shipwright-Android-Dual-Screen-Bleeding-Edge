@@ -9,10 +9,10 @@ Describe 'Shipwright Android release version contract' {
         $version = & $resolverPath -Properties $versionPath
 
         $version.UpstreamVersion | Should Be '9.2.3'
-        $version.PortRevision | Should Be 4
-        $version.VersionName | Should Be '9.2.3.4'
-        $version.VersionCode | Should Be 902003004
-        $version.ReleaseTag | Should Be 'v9.2.3-dual-screen.4'
+        $version.PortRevision | Should Be 5
+        $version.VersionName | Should Be '9.2.3.5'
+        $version.VersionCode | Should Be 902003005
+        $version.ReleaseTag | Should Be '9.2.3.5'
     }
 
     It 'makes the Gradle build consume the shared version manifest' {

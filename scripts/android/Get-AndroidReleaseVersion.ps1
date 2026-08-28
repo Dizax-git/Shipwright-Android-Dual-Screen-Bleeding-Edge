@@ -43,7 +43,7 @@ if ($major -gt 20 -or $minor -gt 99 -or $patch -gt 999) {
 
 $expectedVersionName = "$($values.upstreamVersion).$revision"
 $expectedVersionCode = ($major * 100000000L) + ($minor * 1000000L) + ($patch * 1000L) + $revision
-$expectedReleaseTag = "v$($values.upstreamVersion)-dual-screen.$revision"
+$expectedReleaseTag = $expectedVersionName
 
 if ($values.versionName -ne $expectedVersionName) {
     throw "versionName mismatch. Expected $expectedVersionName but found $($values.versionName)."
