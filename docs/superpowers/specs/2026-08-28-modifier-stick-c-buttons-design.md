@@ -128,7 +128,8 @@ not required for the modifier layer.
 - The package name and persistent signing identity do not change.
 - The APK versionName, versionCode, Git tag, and filename advance together
   using the established numeric convention.
-- No ROM, O2R, texture pack, save, or device configuration is embedded.
+- No ROM, user-derived OTR/O2R, texture pack, save, or device configuration is
+  embedded. The normal project-generated `assets/soh.o2r` remains required.
 
 ## Test Contract
 
