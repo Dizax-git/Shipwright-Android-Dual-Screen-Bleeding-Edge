@@ -4,16 +4,16 @@
 
 **Goal:** Add an optional M1/M2 + left-stick C-button layer, apply the approved traditional mapping to the supplied settings JSON, and publish a verified persistently signed Android release.
 
-**Architecture:** A header-only pure transform converts one completed `OSContPad` sample before it enters the existing input-lag buffer. The transform is configured per controller port, while a tested PowerShell updater rewrites only SDL controller bindings in an external Shipwright JSON file. Existing mappings remain unchanged unless the feature or updater is explicitly used.
+**Architecture:** A header-only pure transform converts one completed, already delayed `OSContPad` sample before `PadMgr` derives press/release state. The transform is configured per controller port, while a tested PowerShell updater rewrites only SDL controller bindings in an external Shipwright JSON file. Existing mappings remain unchanged unless the feature or updater is explicitly used.
 
-**Tech Stack:** C++17, libultraship controller pipeline, ImGui/CVars, Pester 5, Python-assisted host C++ test compilation, Gradle/NDK Android build, persistent local APK signing worker, GitHub Releases.
+**Tech Stack:** C++20, libultraship controller pipeline, ImGui/CVars, Pester 5, Python-assisted host C++ test compilation, Gradle/NDK Android build, persistent local APK signing worker, GitHub Releases.
 
 ---
 
 ### Task 1: Pure Modifier-Stick Transform
 
 **Files:**
-- Create: `libultraship/include/libultraship/controller/ModifierStickCButtons.h`
+- Create: `soh/soh/Enhancements/controls/ModifierStickCButtonsLogic.h`
 - Create: `scripts/android/tests/native/modifier-stick-c-buttons-test.cpp`
 - Create: `scripts/android/run-modifier-stick-tests.py`
 - Modify: `.github/workflows/android.yml`
@@ -61,21 +61,22 @@ Before Gradle, run:
 - [ ] **Step 6: Commit**
 
 ```powershell
-git add libultraship/include/libultraship/controller/ModifierStickCButtons.h scripts/android .github/workflows/android.yml
+git add soh/soh/Enhancements/controls/ModifierStickCButtonsLogic.h scripts/android .github/workflows/android.yml
 git commit -m "test(android): define modifier-stick C-button behavior"
 ```
 
 ### Task 2: Controller Pipeline and Settings UI
 
 **Files:**
-- Modify: `libultraship/include/libultraship/controller/controldevice/controller/Controller.h`
-- Modify: `libultraship/src/libultraship/controller/controldevice/controller/Controller.cpp`
+- Create: `soh/soh/Enhancements/controls/ModifierStickCButtons.h`
+- Create: `soh/soh/Enhancements/controls/ModifierStickCButtons.cpp`
+- Modify: `soh/src/code/padmgr.c`
 - Modify: `soh/soh/Enhancements/controls/SohInputEditorWindow.cpp`
 - Modify: `scripts/android/tests/controller-modifier-stick.Tests.ps1`
 
 - [ ] **Step 1: Write the failing source contract test**
 
-Require the controller to apply the transform before `mPadBuffer.push_front`, maintain one state per controller, and expose an enable toggle plus M1/M2 selector in the controller UI.
+Require `PadMgr` to apply the transform after `osContGetReadData` and before `PadMgr_ProcessInputs`, maintain one state per controller, and expose an enable toggle plus M1/M2 selector in the controller UI.
 
 - [ ] **Step 2: Run the Pester test and verify RED**
 
@@ -87,14 +88,14 @@ Expected: failures for the absent pipeline call and UI controls.
 
 - [ ] **Step 3: Integrate the transform**
 
-Read per-port CVars:
+Read per-port CVars from the parent Shipwright enhancement layer:
 
 ```text
 gSettings.Controllers.Port1.ModifierStickCButtons.Enabled
 gSettings.Controllers.Port1.ModifierStickCButtons.Modifier
 ```
 
-Translate modifier choice `1` to M1 (`0x0040`) and `2` to M2 (`0x0080`). Apply the transform after both sticks and buttons are populated and before the sample is buffered.
+Translate modifier choice `1` to M1 (`0x0040`) and `2` to M2 (`0x0080`). Apply the transform to the already delayed sample before `PadMgr_ProcessInputs` derives current, press, and release state.
 
 - [ ] **Step 4: Add the controller UI**
 

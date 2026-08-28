@@ -25,6 +25,9 @@ jobs:
           git config --global --add safe.directory "${GITHUB_WORKSPACE}"
           printf 'sdk.dir=%s\nndk.dir=%s\n' "${ANDROID_SDK_ROOT}" "${ANDROID_NDK_HOME}" > Android/local.properties
 
+      - name: Test native modifier-stick behavior
+        run: python3 scripts/android/run-modifier-stick-tests.py --build-dir build-native-tests
+
       - name: Generate project resource archive
         run: |
           cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Release

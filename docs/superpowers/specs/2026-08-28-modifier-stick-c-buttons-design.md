@@ -32,15 +32,15 @@ while it is active.
 
 ### 1. Post-process the completed controller sample (recommended)
 
-After normal button and stick mappings have populated an `OSContPad` sample,
-run a small generic transform before the sample enters the simulated-input-lag
-buffer. The transform receives configuration plus a small latch state, detects
+After normal button and stick mappings and simulated input lag have populated
+an `OSContPad` sample, run a small generic transform before `PadMgr` derives
+press/release state. The transform receives configuration plus a small latch state, detects
 the configured modifier, converts the dominant left-stick direction to a
 configured button mask, and zeros the analog stick while active.
 
 This is the smallest behaviorally complete change. It preserves every existing
-mapping class and keeps simulated input lag consistent across the modifier,
-stick, and generated C-button.
+mapping class. The modifier and stick are delayed together before the generated
+C-button is derived, so their timing remains synchronized.
 
 ### 2. Add conditional variants of every mapping class
 
@@ -85,8 +85,9 @@ Behavior:
 7. Preserve all unrelated buttons, right-stick values, gyro values, and the
    modifier bit itself.
 
-The transform runs before the controller sample is added to Shipwright's input
-lag buffer. Delayed input therefore remains internally synchronized.
+The transform runs after the controller's simulated-input-lag buffer and before
+`PadMgr_ProcessInputs`. The modifier and stick therefore share the same delayed
+sample, and the generated C-button participates normally in press/release state.
 
 ## Configuration and UI
 
