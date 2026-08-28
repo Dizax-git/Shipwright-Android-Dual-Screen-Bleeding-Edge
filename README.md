@@ -56,7 +56,7 @@ With Shipwright closed, run:
 
 The updater validates the rewritten JSON and replaces the original atomically without creating a backup file.
 
-Android release identity is defined once in `Android/version.properties`. APK version names use a numeric four-component form such as `9.2.3.3`, while GitHub tags retain the descriptive form `v9.2.3-dual-screen.3`. Both the APK verifier and build reject mismatched version metadata so every published revision remains a real Android update.
+Android release identity is defined once in `Android/version.properties`. The APK version name, GitHub tag, and APK filename use the same numeric four-component form, such as `9.2.3.5`; descriptive **Dual Screen** wording belongs only in the release title. Both the APK verifier and build reject mismatched version metadata so every published revision remains a real Android update.
 
 The preserved feature contract from the official, Waterdish Android, and Chilhaps dual-screen sources is recorded in [Android feature parity](docs/android/FEATURE_PARITY.md).
 

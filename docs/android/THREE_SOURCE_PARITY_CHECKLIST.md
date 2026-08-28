@@ -87,13 +87,13 @@ Evidence: Java lifecycle tests, native routing tests, controller-overlay routing
 ## APK release identity
 
 - [x] `Android/version.properties` is the single version source.
-- [x] Numeric updater-safe `versionName=9.2.3.4`.
-- [x] Monotonic `versionCode=902003004`, greater than all prior `.1`, `.2`, and `.3` APK codes.
-- [x] Descriptive release tag `v9.2.3-dual-screen.4` is validated against the version manifest.
+- [x] Numeric updater-safe `versionName=9.2.3.5`.
+- [x] Monotonic `versionCode=902003005`, greater than all prior `.1` through `.4` APK codes.
+- [x] Numeric release tag `9.2.3.5` matches `versionName` and the APK filename; descriptive wording is confined to the release title.
 - [x] Gradle output naming, manifest metadata, APK verifier expectations, and release tag derive from the same manifest.
 - [x] Rebuild after all host-side parity gaps close and verify the final signed APK against package, version, ABI, alignment, signer, and forbidden-payload gates.
-- [x] Publish exactly the verified signed `.4` artifact and checksum.
-- [x] Verify the published GitHub release metadata and downloadable APK expose the `.4` version identity to updater clients.
+- [ ] Publish exactly the verified signed `.5` artifact and checksum.
+- [ ] Verify the published GitHub release metadata and downloadable APK expose the `.5` version identity to updater clients.
 
 ## Completion rule
 
