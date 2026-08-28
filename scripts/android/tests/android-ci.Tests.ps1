@@ -13,22 +13,25 @@ Describe 'Android continuous-integration parity contract' {
         $workflow | Should Match 'submodules:\s*recursive'
     }
 
-    It 'runs Android tests before assembling the release candidate' {
-        $workflow | Should Match '(?s):app:testReleaseUnitTest.*?:app:assembleRelease'
+    It 'uses the GitHub-hosted Windows toolchain without a container' {
+        $workflow | Should Match 'runs-on:\s*windows-2022'
+        $workflow | Should Not Match '(?m)^\s*container:'
     }
 
-    It 'restores the Gradle wrapper executable bit in the Linux runner' {
-        $workflow | Should Match '(?s)chmod \+x Android/gradlew.*?cd Android.*?\./gradlew --no-daemon'
+    It 'uses the tested Windows-native builder against the checked-out source' {
+        $workflow | Should Match 'Build-WindowsAndroidRelease\.ps1'
+        $workflow | Should Match 'UseCurrentCheckout'
     }
 
-    It 'generates the project-owned resource archive before packaging' {
-        $workflow | Should Match 'GenerateSohOtr'
-        $workflow | Should Match 'soh/soh\.o2r Android/app/src/main/assets/soh\.o2r'
+    It 'does not invoke Docker or duplicate build implementation in YAML' {
+        $workflow | Should Not Match '(?i)docker|android-builder-soh'
+        $workflow | Should Not Match '(?s)cmake --build.*GenerateSohOtr'
+        $workflow | Should Not Match '(?s)gradlew.*assembleRelease'
     }
 
     It 'uploads the unsigned candidate without replacing the persistent local signer' {
         $workflow | Should Match 'actions/upload-artifact@v4'
-        $workflow | Should Match 'Android/app/build/outputs/apk/release/\*\.apk'
+        $workflow | Should Match 'windows-native-output/\*\.apk'
         $workflow | Should Not Match 'SIGNING_KEYSTORE|storePassword|keyPassword|gh release create'
     }
 }
