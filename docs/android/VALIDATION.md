@@ -136,3 +136,25 @@ Validated on 2026-08-21 from implementation commits `e9ad65930079e94a9b81b41996f
 | Signature | `apksigner verify --verbose --print-certs` passed with exactly one pinned signer |
 | Payload | APK contains no ROM, OTR/O2R, save, state, or quest payload |
 | Device validation | pending because AYN Thor `bfa98654` was not connected; no unrelated connected device was modified |
+
+## Traditional controller release candidate
+
+Validated on 2026-08-28 from implementation commit `a1b69c4164bedf955a33ffc86fde9b8758e91127` and official Shipwright `9.2.3`.
+
+| Check | Result |
+|---|---|
+| Controller behavior | Left stick remains analog movement; right stick remains camera/aim; holding modifier M1 converts the left stick to the four N64 C-buttons with dominant-axis selection and hysteresis |
+| Traditional profile | A/B, Z on L2, R on R1, L on View/Back, Start, D-pad, both analog sticks, and M1 on L1 are written by `scripts/android/Set-TraditionalControllerLayout.ps1` without replacing keyboard or unrelated mappings |
+| User configuration | `G:\Modding\Downloads\Ship of Harkinian\shipofharkinian.json` updated atomically; final SHA-256 `7fdb6d46da4b5d9e9a6d80a9512302ba740e5536183d4ad66e0bd28f7f7dd857` |
+| Host tests | 56 Pester source/artifact-contract tests, the native modifier-stick behavior test, and 21 Java release unit tests passed with zero failures |
+| Release build | `gradlew.bat --no-daemon :app:testReleaseUnitTest :app:assembleRelease` completed native build, Java tests, lint vital, and APK assembly successfully |
+| Package | `com.dishii.soh` |
+| Version | `versionName=9.2.3.5`, `versionCode=902003005` |
+| ABI | exactly `arm64-v8a` |
+| Unsigned size / SHA-256 | 53,825,608 bytes / `829ea4b21ba91ffd1c988b15b135e63dc80bfa7c58e406912d8ed8de4cc58ecf` |
+| Signed size / SHA-256 | 54,519,411 bytes / `73d280108fc9162ac51032c3f62bda871969d2bb826a8d2d253dd39a01231be3` |
+| Persistent signer SHA-256 | `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004` |
+| Alignment | `zipalign -c -P 16 4` passed |
+| Signature | `apksigner verify --verbose --print-certs` passed with exactly one pinned signer |
+| Payload | APK and nested assets contain no raw ROM, user OTR/O2R, save, state, or quest payload |
+| Device actions | none; no ADB, installation, launch, or device control was performed |
