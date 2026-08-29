@@ -49,6 +49,8 @@ Validated on 2026-08-29 from clean local commit `2bc043b29` using the isolated W
 | Payload | Project-owned `assets/soh.o2r` present; raw ROM, user OTR/O2R, quest, save, and state payloads rejected |
 | Container dependency | None; local and GitHub builds use the same PowerShell implementation |
 
+The first GitHub run of the Windows workflow exposed a CI-only path-length defect: Android's nested `FetchContent` path exceeded Ninja's 260-character limit under GitHub's doubled repository checkout path. CI therefore invokes the same non-linked clone mode under the short `RUNNER_TEMP\w` root; no symlink, junction, or container workaround is used.
+
 ## Dual-screen signed release candidate
 
 Validated on 2026-08-21 from local commit `f15c6e898` and official Shipwright `9.2.3`.

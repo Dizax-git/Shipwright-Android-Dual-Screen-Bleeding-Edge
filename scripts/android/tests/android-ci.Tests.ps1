@@ -18,9 +18,10 @@ Describe 'Android continuous-integration parity contract' {
         $workflow | Should Not Match '(?m)^\s*container:'
     }
 
-    It 'uses the tested Windows-native builder against the checked-out source' {
+    It 'uses the tested Windows-native builder through a short isolated clone' {
         $workflow | Should Match 'Build-WindowsAndroidRelease\.ps1'
-        $workflow | Should Match 'UseCurrentCheckout'
+        $workflow | Should Match "Join-Path \`$env:RUNNER_TEMP 'w'"
+        $workflow | Should Not Match 'UseCurrentCheckout'
     }
 
     It 'does not invoke Docker or duplicate build implementation in YAML' {

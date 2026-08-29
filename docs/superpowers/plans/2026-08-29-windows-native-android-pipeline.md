@@ -4,7 +4,7 @@
 
 **Goal:** Build and verify the complete SOH Android unsigned candidate on Windows without Docker, then remove the obsolete SOH container implementation and local resources.
 
-**Architecture:** A tested PowerShell orchestrator performs an isolated local clone, pinned Windows host-tool build, semantic `soh.o2r` validation, Android Gradle build, and atomic artifact export. GitHub Actions invokes the same script on `windows-2022`; persistent signing remains outside this pipeline.
+**Architecture:** A tested PowerShell orchestrator performs an isolated short-path clone, pinned Windows host-tool build, semantic `soh.o2r` validation, Android Gradle build, and atomic artifact export. GitHub Actions invokes the same clone mode under `RUNNER_TEMP\w` on `windows-2022` to stay below Ninja's Windows path ceiling; persistent signing remains outside this pipeline.
 
 **Tech Stack:** PowerShell 7, Pester, Git, Visual Studio 2022/v143, CMake 3.31.5, vcpkg 2026.07.29, Android SDK/NDK 26, Gradle, GitHub Actions.
 
