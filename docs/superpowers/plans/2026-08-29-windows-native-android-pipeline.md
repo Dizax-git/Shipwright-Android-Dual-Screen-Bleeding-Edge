@@ -16,31 +16,31 @@
 - Create: `scripts/android/tests/windows-native-build.Tests.ps1`
 - Modify: `scripts/android/tests/android-ci.Tests.ps1`
 
-- [ ] Assert that the builder exposes isolated/current-checkout modes, validates clean committed source, pins vcpkg, uses `GenerateSohOtr`, rejects forbidden archive payloads, compares archive content manifests, runs Android tests and assembly, and cleans its working root.
-- [ ] Change CI expectations from Linux/container commands to `windows-2022` and the Windows builder.
-- [ ] Run the two test files and confirm failure because the builder and workflow are not yet implemented.
+- [x] Assert that the builder exposes isolated/current-checkout modes, validates clean committed source, pins vcpkg, uses `GenerateSohOtr`, rejects forbidden archive payloads, compares archive content manifests, runs Android tests and assembly, and cleans its working root.
+- [x] Change CI expectations from Linux/container commands to `windows-2022` and the Windows builder.
+- [x] Run the two test files and confirm failure because the builder and workflow are not yet implemented.
 
 ### Task 2: Implement the Windows-native builder
 
 **Files:**
 - Create: `scripts/android/Build-WindowsAndroidRelease.ps1`
 
-- [ ] Implement prerequisite resolution for Git, Visual Studio/v143, Android SDK, CMake, Java, and Python.
-- [ ] Implement a non-linked committed-source clone under a unique D-drive working directory for local use and an explicit current-checkout mode for CI.
-- [ ] Clone and detach the pinned vcpkg commit inside the working root.
-- [ ] Configure and build `GenerateSohOtr` with the Visual Studio generator.
-- [ ] Validate the generated archive and optional reference content-manifest equality, then copy it into Android assets.
-- [ ] Generate temporary Android SDK properties, run unit tests plus release assembly, validate one unsigned arm64 candidate, export it atomically, and clean the working root.
-- [ ] Run the focused tests and confirm they pass.
+- [x] Implement prerequisite resolution for Git, Visual Studio/v143, Android SDK, CMake, Java, and Python.
+- [x] Implement a non-linked committed-source clone under a unique D-drive working directory for local use and an explicit current-checkout mode for CI.
+- [x] Clone and detach the pinned vcpkg commit inside the working root.
+- [x] Configure and build `GenerateSohOtr` with the Visual Studio generator.
+- [x] Validate the generated archive and optional reference content-manifest equality, then copy it into Android assets.
+- [x] Generate temporary Android SDK properties, run unit tests plus release assembly, validate one unsigned arm64 candidate, export it atomically, and clean the working root.
+- [x] Run the focused tests and confirm they pass.
 
 ### Task 3: Prove a clean local build
 
 **Files:**
 - Modify after evidence: `docs/android/VALIDATION.md`
 
-- [ ] Invoke the builder from the clean committed checkout using `D:\Temp`, with the current container-generated `soh.o2r` as the semantic reference.
-- [ ] Confirm host asset generation, manifest equality, Android tests, native compilation, APK assembly, ABI/payload checks, and output hashes.
-- [ ] Confirm the permanent checkout did not acquire build directories or change ignored generated assets.
+- [x] Invoke the builder from the clean committed checkout using `D:\Temp`, with the current container-generated `soh.o2r` as the semantic reference.
+- [x] Confirm host asset generation, manifest equality, Android tests, native compilation, APK assembly, ABI/payload checks, and output hashes.
+- [x] Confirm the permanent checkout did not acquire build directories or change ignored generated assets.
 
 ### Task 4: Replace CI and remove repository Docker support
 
@@ -55,11 +55,11 @@
 - Delete: `Dockerfile`
 - Delete: `docker/`
 
-- [ ] Wire `windows-2022`, recursive checkout, Android SDK provisioning, the Windows builder, and unsigned artifact upload.
-- [ ] Replace container parity markers with the Windows-native build contract.
-- [ ] Label the original container validation as historical and record the clean Windows evidence.
-- [ ] Add a test rejecting active Docker implementation references, then remove all active references and files.
-- [ ] Run the complete Android Pester and native contract suites.
+- [x] Wire `windows-2022`, recursive checkout, Android SDK provisioning, the Windows builder, and unsigned artifact upload.
+- [x] Replace container parity markers with the Windows-native build contract.
+- [x] Label the original container validation as historical and record the clean Windows evidence.
+- [x] Add a test rejecting active Docker implementation references, then remove all active references and files.
+- [x] Run the complete Android Pester and native contract suites.
 
 ### Task 5: Publish and round-trip CI
 

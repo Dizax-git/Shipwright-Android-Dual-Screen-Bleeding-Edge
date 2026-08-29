@@ -20,6 +20,7 @@ Verified on 2026-08-21. Official stable source is the newest non-draft, non-prer
 - The modern Android reference supplies audited Android platform integration and Android-compatible submodules.
 - The Waterdish reference defines the original Android user-facing and build behavior. Its implementation is carried forward through the audited modern Android layer rather than by importing obsolete 9.0.2 gameplay code.
 - The Chilhaps reference defines the dual-screen behavior and is adapted to the maintained renderer API. The Thor composition additionally moves the preserved Waterdish touch layer to the secondary presentation with primary-display fallback.
+- The reference Docker build is deliberately excluded. The maintained build contract is `scripts/android/Build-WindowsAndroidRelease.ps1`, which generates `soh.o2r` and the unsigned arm64 APK natively on Windows and is shared by local builds and CI.
 - `docs/android/FEATURE_PARITY.md` maps each maintained behavior to current source and automated evidence.
 - ROMs, generated OTRs, saves, and user content are excluded from the repository and APK.
 ## Non-asset tree-difference classification
@@ -99,14 +100,14 @@ The inventory compares official `9.2.3` to `android-reference/android-port-923` 
 | `OTRExporter` | `M` | `required-android` |
 | `README.md` | `M` | `excluded-divergence` |
 | `ZAPDTR` | `M` | `required-android` |
-| `docker/Containerfile` | `A` | `required-android` |
-| `docker/Makefile` | `A` | `required-android` |
-| `docker/scripts/build_android_project.sh` | `A` | `required-android` |
-| `docker/scripts/build_container_image.sh` | `A` | `required-android` |
-| `docker/scripts/entrypoint.sh` | `A` | `required-android` |
-| `docker/scripts/install_container_image.sh` | `A` | `required-android` |
-| `docker/scripts/publish_container_image.sh` | `A` | `required-android` |
-| `docker/scripts/set_container_vars.sh` | `A` | `required-android` |
+| `docker/Containerfile` | `A` | `excluded-divergence` |
+| `docker/Makefile` | `A` | `excluded-divergence` |
+| `docker/scripts/build_android_project.sh` | `A` | `excluded-divergence` |
+| `docker/scripts/build_container_image.sh` | `A` | `excluded-divergence` |
+| `docker/scripts/entrypoint.sh` | `A` | `excluded-divergence` |
+| `docker/scripts/install_container_image.sh` | `A` | `excluded-divergence` |
+| `docker/scripts/publish_container_image.sh` | `A` | `excluded-divergence` |
+| `docker/scripts/set_container_vars.sh` | `A` | `excluded-divergence` |
 | `libultraship` | `M` | `required-android` |
 | `soh/CMakeLists.txt` | `M` | `required-android` |
 | `soh/fixbaserom.py` | `M` | `required-android` |

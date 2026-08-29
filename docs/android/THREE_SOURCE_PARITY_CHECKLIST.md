@@ -52,8 +52,8 @@ Evidence: `verify-overlay.ps1`, `verify-provenance.ps1`, `PROVENANCE.md`, and th
 ### Build and delivery
 
 - [x] Four-ABI debug build and arm64-v8a release build, matching the final Waterdish build-type contract.
-- [x] Reproducible container build scripts.
-- [x] CI checks out submodules, builds `soh.o2r`, runs Android unit tests, assembles an unsigned release candidate, and uploads it as an artifact.
+- [x] Reproducible Windows-native build entry point performs an isolated non-linked checkout under `D:\Temp`, builds `GenerateSohOtr`, validates `soh.o2r`, runs Android unit tests, and assembles the arm64 release APK without Docker.
+- [x] CI uses the same Windows-native entry point, checks out submodules, builds `soh.o2r`, runs Android unit tests, assembles an unsigned release candidate, and uploads it as an artifact.
 - [x] Release signing is external to Gradle and uses the persistent per-package identity.
 
 Evidence: Android unit tests, `verify-feature-parity.ps1`, `verify-apk.ps1`, signing-worker verification, and the source paths cited in `FEATURE_PARITY.md`.

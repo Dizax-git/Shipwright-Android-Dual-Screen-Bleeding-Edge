@@ -78,8 +78,8 @@ foreach ($marker in $waterdishMarkers) {
 foreach ($path in @(
     'Android\app\src\main\assets\gamecontrollerdb.txt',
     'Android\app\src\main\res\layout\touchcontrol_overlay.xml',
-    'docker\Containerfile',
-    'docker\Makefile',
+    'scripts\android\Build-WindowsAndroidRelease.ps1',
+    'scripts\android\WindowsNativeBuild.psm1',
     '.github\workflows\android.yml'
 )) {
     $null = Get-RepositoryFile $path
