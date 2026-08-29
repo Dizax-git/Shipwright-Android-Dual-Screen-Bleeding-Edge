@@ -6,7 +6,7 @@ Replace the SOH Android container build with one reproducible Windows-native pip
 
 ## Build architecture
 
-`scripts/android/Build-WindowsAndroidRelease.ps1` is the single entry point. A local invocation rejects a dirty repository and creates a full, non-linked clone of the committed source under a unique `D:\Temp` working root. GitHub Actions uses its already-isolated checkout through an explicit switch. This keeps CMake, vcpkg, Gradle, `.cxx`, and APK build products away from the permanent checkout without symlinks.
+`scripts/android/Build-WindowsAndroidRelease.ps1` is the single entry point. A local invocation rejects a dirty repository and creates a full, non-linked clone of the committed source under a unique `D:\Temp` working root. GitHub Actions uses the same clone mode under the short `RUNNER_TEMP\w` root because the default doubled repository checkout path makes Android CMake/FetchContent exceed Ninja's 260-character Windows path ceiling. This keeps CMake, vcpkg, Gradle, `.cxx`, and APK build products away from the permanent checkout without symlinks.
 
 The host stage uses Visual Studio 2022, v143, the Windows SDK, CMake 3.31.5, and vcpkg tag `2026.07.29` at commit `c76c06644034521fb761a39f8f52d8e87d1103d5`. It builds only `GenerateSohOtr`; that target invokes ZAPD with `--norom`, so no user ROM is read or required. The resulting archive is opened as ZIP, checked for entries and forbidden game/save payloads, optionally compared with a reference archive by a deterministic content-manifest hash, and copied into Android assets.
 

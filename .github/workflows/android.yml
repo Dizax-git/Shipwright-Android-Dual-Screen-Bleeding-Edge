@@ -37,9 +37,8 @@ jobs:
         run: |
           ./scripts/android/Build-WindowsAndroidRelease.ps1 `
             -RepositoryRoot $env:GITHUB_WORKSPACE `
-            -WorkingRoot (Join-Path $env:RUNNER_TEMP 'soh-windows-native-build') `
-            -OutputDirectory (Join-Path $env:GITHUB_WORKSPACE 'windows-native-output') `
-            -UseCurrentCheckout
+            -WorkingRoot (Join-Path $env:RUNNER_TEMP 'w') `
+            -OutputDirectory (Join-Path $env:GITHUB_WORKSPACE 'windows-native-output')
 
       - name: Upload unsigned release candidate
         uses: actions/upload-artifact@v4
