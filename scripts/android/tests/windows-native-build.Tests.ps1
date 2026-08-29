@@ -127,4 +127,11 @@ Describe 'Windows-native Shipwright Android build contract' {
         ) -Raw
         $parityScript | Should Not Match '(?i)docker|containerfile|devcontainer'
     }
+
+    It 'returns success after a completed build even when a native tool left a stale exit code' {
+        $script = Get-Content -LiteralPath $entryPointPath -Raw
+        $script | Should Match '\$result\s*=\s*Invoke-SohWindowsAndroidBuild'
+        $script | Should Match '\$global:LASTEXITCODE\s*=\s*0'
+        $script | Should Match '(?m)^\s*\$result\s*$'
+    }
 }
