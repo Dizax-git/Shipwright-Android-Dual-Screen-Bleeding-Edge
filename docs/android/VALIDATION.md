@@ -1,6 +1,6 @@
 # Android validation record
 
-## Stable single-screen baseline
+## Stable single-screen baseline (historical container evidence)
 
 Validated on 2026-08-21 before applying the dual-screen feature layer.
 
@@ -26,6 +26,28 @@ Validated on 2026-08-21 before applying the dual-screen feature layer.
 | Nested archive payload | 1,279 entries; no ROM, OTR/O2R, save, or quest payload |
 
 The unsigned result is the deliberate handoff boundary: release candidates are built without an ad-hoc Gradle identity and are normalized only by the persistent local signing worker after the final dual-screen APK passes its own validation gates.
+
+This baseline records how the original Android layer was first validated. The container image and scripts are superseded and are not part of the maintained build pipeline.
+
+## Windows-native Android pipeline
+
+Validated on 2026-08-29 from clean local commit `2bc043b29` using the isolated Windows builder under `D:\Temp`.
+
+| Check | Result |
+|---|---|
+| Entry point | `scripts/android/Build-WindowsAndroidRelease.ps1` |
+| Isolation | Full non-linked committed-source clone under `D:\Temp`; permanent checkout remained free of generated build trees |
+| Host asset build | Visual Studio 2022/v143 built only `GenerateSohOtr`; no ROM was read or required |
+| vcpkg | `c76c06644034521fb761a39f8f52d8e87d1103d5` |
+| Generated `soh.o2r` SHA-256 | `e9fe89b0eb628ed99cadec5681b082b487d1a3da62c2d4e2adef077c8dbb6870` |
+| `soh.o2r` content-manifest SHA-256 | `a26c0fc1ba524d9943925cec2ad91546e3cd01772fc0d97c2193daa639924d5f` |
+| Android work | `:app:testReleaseUnitTest :app:assembleRelease` |
+| APK | `Shipwright-Android-Dual-Screen-Bleeding-Edge-9.2.3.5.apk`, 53,826,368 bytes |
+| APK SHA-256 | `be58c6ba43b2b082c686ce178438d53d79f83ff2d5c59c61e186ca4bac1999c4` |
+| Package/version | `com.dishii.soh`, `versionName=9.2.3.5`, `versionCode=902003005` |
+| ABI | exactly `arm64-v8a` |
+| Payload | Project-owned `assets/soh.o2r` present; raw ROM, user OTR/O2R, quest, save, and state payloads rejected |
+| Container dependency | None; local and GitHub builds use the same PowerShell implementation |
 
 ## Dual-screen signed release candidate
 

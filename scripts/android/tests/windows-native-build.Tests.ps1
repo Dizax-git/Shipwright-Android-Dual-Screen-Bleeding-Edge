@@ -116,4 +116,15 @@ Describe 'Windows-native Shipwright Android build contract' {
         $combined | Should Match ':app:assembleRelease'
         $combined | Should Not Match '(?i)docker\s+(run|build|pull)'
     }
+
+    It 'does not retain an active Docker implementation beside the Windows builder' {
+        (Test-Path -LiteralPath (Join-Path $repositoryRoot 'Dockerfile')) | Should Be $false
+        (Test-Path -LiteralPath (Join-Path $repositoryRoot 'docker')) | Should Be $false
+        (Test-Path -LiteralPath (Join-Path $repositoryRoot '.devcontainer')) | Should Be $false
+
+        $parityScript = Get-Content -LiteralPath (
+            Join-Path $repositoryRoot 'scripts\android\verify-feature-parity.ps1'
+        ) -Raw
+        $parityScript | Should Not Match '(?i)docker|containerfile|devcontainer'
+    }
 }
