@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 $script:VcpkgCommit = 'c76c06644034521fb761a39f8f52d8e87d1103d5'
 $script:CMakeVersion = '3.31.5'
-$script:NdkVersion = '26.0.10792818'
+$script:NdkVersion = '29.0.14206865'
 
 function Invoke-SohProcess {
     [CmdletBinding()]
