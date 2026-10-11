@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..\..')
 $modulePath = Join-Path $repositoryRoot 'scripts\android\WindowsNativeBuild.psm1'
 $entryPointPath = Join-Path $repositoryRoot 'scripts\android\Build-WindowsAndroidRelease.ps1'
+$cmakePath = Join-Path $repositoryRoot 'CMakeLists.txt'
 
 if (Test-Path -LiteralPath $modulePath) {
     Import-Module $modulePath -Force
@@ -115,6 +116,17 @@ Describe 'Windows-native Shipwright Android build contract' {
         $combined | Should Match ':app:testReleaseUnitTest'
         $combined | Should Match ':app:assembleRelease'
         $combined | Should Not Match '(?i)docker\s+(run|build|pull)'
+    }
+
+    It 'bounds native compilation independently of Gradle worker limits' {
+        $module = Get-Content -LiteralPath $modulePath -Raw
+        $cmake = Get-Content -LiteralPath $cmakePath -Raw
+
+        $module | Should Match "'--parallel',\s*'2'"
+        $module | Should Match 'CMAKE_BUILD_PARALLEL_LEVEL\s*=\s*''2'''
+        $cmake | Should Match 'JOB_POOLS\s+soh_android_compile=2\s+soh_android_link=1'
+        $cmake | Should Match 'CMAKE_JOB_POOL_COMPILE\s+soh_android_compile'
+        $cmake | Should Match 'CMAKE_JOB_POOL_LINK\s+soh_android_link'
     }
 
     It 'does not retain an active Docker implementation beside the Windows builder' {
