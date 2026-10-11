@@ -273,7 +273,11 @@ function Invoke-SohWindowsAndroidBuild {
     $oldVcpkgRoot = $env:VCPKG_ROOT
     $oldVcpkgCache = $env:VCPKG_DEFAULT_BINARY_CACHE
     $oldGradleHome = $env:GRADLE_USER_HOME
+    $oldCMakeBuildParallelLevel = $env:CMAKE_BUILD_PARALLEL_LEVEL
     try {
+        # CMake's build parallelism is independent of Gradle's worker limit.
+        # Keep both direct host builds and AGP's nested Ninja build bounded.
+        $env:CMAKE_BUILD_PARALLEL_LEVEL = '2'
         $git = (Get-Command git -ErrorAction Stop).Source
         $python = (Get-Command python -ErrorAction Stop).Source
         $java = (Get-Command java -ErrorAction Stop).Source
@@ -318,7 +322,7 @@ function Invoke-SohWindowsAndroidBuild {
             "-DVCPKG_ROOT:PATH=$vcpkg", '-DCMAKE_BUILD_TYPE:STRING=Release'
         ) -WorkingDirectory $working
         $null = Invoke-SohProcess -FilePath $cmake -Arguments @(
-            '--build', $hostBuild, '--config', 'Release', '--target', 'GenerateSohOtr', '--parallel'
+            '--build', $hostBuild, '--config', 'Release', '--target', 'GenerateSohOtr', '--parallel', '2'
         ) -WorkingDirectory $working
 
         $generatedO2r = Join-Path $source 'soh\soh.o2r'
@@ -373,6 +377,7 @@ function Invoke-SohWindowsAndroidBuild {
         $env:VCPKG_ROOT = $oldVcpkgRoot
         $env:VCPKG_DEFAULT_BINARY_CACHE = $oldVcpkgCache
         $env:GRADLE_USER_HOME = $oldGradleHome
+        $env:CMAKE_BUILD_PARALLEL_LEVEL = $oldCMakeBuildParallelLevel
         if ($succeeded -or -not $KeepWorkingDirectoryOnFailure) {
             Remove-SohDirectory -Path $working
         }

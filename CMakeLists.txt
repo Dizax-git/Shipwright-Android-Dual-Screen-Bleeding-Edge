@@ -7,6 +7,16 @@ set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
 
 project(Ship VERSION 9.2.3 LANGUAGES C CXX)
+
+# Gradle worker limits do not constrain the Ninja process used by AGP's
+# externalNativeBuild task. Keep Android compilation within the same two-job
+# resource budget and serialize memory-intensive links.
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    set_property(GLOBAL PROPERTY JOB_POOLS soh_android_compile=2 soh_android_link=1)
+    set(CMAKE_JOB_POOL_COMPILE soh_android_compile)
+    set(CMAKE_JOB_POOL_LINK soh_android_link)
+endif()
+
 include(CMake/soh-cvars.cmake)
 include(CMake/lus-cvars.cmake)
 set(SPDLOG_LEVEL_TRACE 0)
