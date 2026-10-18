@@ -54,6 +54,49 @@ function Invoke-ApkTool {
     return $text
 }
 
+function Assert-NativeElfAlignment {
+    param([Parameter(Mandatory)] $Entry)
+
+    $reader = [IO.BinaryReader]::new($Entry.Open())
+    try {
+        $header = $reader.ReadBytes(64)
+        if ($header.Length -ne 64 -or [BitConverter]::ToUInt32($header, 0) -ne 0x464c457f -or
+            $header[4] -ne 2 -or $header[5] -ne 1 -or [BitConverter]::ToUInt16($header, 18) -ne 183) {
+            throw "Invalid arm64 ELF header: $($Entry.FullName)"
+        }
+        $offset = [BitConverter]::ToUInt64($header, 32)
+        $entrySize = [BitConverter]::ToUInt16($header, 54)
+        $count = [BitConverter]::ToUInt16($header, 56)
+        if ($offset -lt 64 -or $entrySize -lt 56 -or $count -eq 0 -or
+            ([decimal]$offset + [decimal]$entrySize * $count) -gt $Entry.Length) {
+            throw "Invalid ELF program header table: $($Entry.FullName)"
+        }
+        # ZIP entry streams are not seekable; skip in bounded chunks, not a whole-library allocation.
+        $remaining = $offset - 64
+        while ($remaining -gt 0) {
+            $chunk = $reader.ReadBytes([int][Math]::Min(16384, $remaining))
+            if ($chunk.Length -eq 0) { throw 'Truncated ELF program header table.' }
+            $remaining -= $chunk.Length
+        }
+        $loads = 0
+        for ($i = 0; $i -lt $count; $i++) {
+            $program = $reader.ReadBytes($entrySize)
+            if ($program.Length -ne $entrySize) { throw 'Truncated ELF program header.' }
+            if ([BitConverter]::ToUInt32($program, 0) -ne 1) { continue }
+            $loads++
+            $fileOffset = [BitConverter]::ToUInt64($program, 8)
+            $address = [BitConverter]::ToUInt64($program, 16)
+            $alignment = [BitConverter]::ToUInt64($program, 48)
+            if ($alignment -lt 16384 -or ($alignment -band ($alignment - 1)) -ne 0 -or
+                ($fileOffset % 16384) -ne ($address % 16384)) {
+                throw "ELF LOAD alignment is not 16 KiB compatible: $($Entry.FullName)"
+            }
+        }
+        if ($loads -eq 0) { throw "ELF has no LOAD segments: $($Entry.FullName)" }
+    }
+    finally { $reader.Dispose() }
+}
+
 function Assert-NoForbiddenPayload {
     param(
         [Parameter(Mandatory)][string[]] $Entries,
@@ -107,6 +150,14 @@ try {
     if (($abis -join ',') -ne 'arm64-v8a') {
         throw "APK ABI mismatch. Expected exactly arm64-v8a but found $($abis -join ',')."
     }
+    foreach ($requiredLibrary in @('libSDL2.so', 'libsoh.so')) {
+        if ($entries -notcontains "lib/arm64-v8a/$requiredLibrary") {
+            throw "Missing runtime library: $requiredLibrary"
+        }
+    }
+    foreach ($native in @($archive.Entries | Where-Object { $_.FullName -match '^lib/arm64-v8a/[^/]+\.so$' })) {
+        Assert-NativeElfAlignment -Entry $native
+    }
 
     $projectArchives = @($archive.Entries | Where-Object { $_.FullName -match '(?i)\.o2r$' })
     if ($projectArchives.Count -ne 1 -or $projectArchives[0].FullName -ne 'assets/soh.o2r') {
@@ -145,6 +196,7 @@ Write-Output "PASS package=$package"
 Write-Output "PASS versionName=$versionName versionCode=$versionCode"
 Write-Output "PASS ABIs=$($abis -join ',')"
 Write-Output 'PASS alignment=zipalign-16KiB'
+Write-Output 'PASS alignment=all-ELF-LOAD-segments-16KiB'
 Write-Output "PASS signerSha256=$actualSigner"
 Write-Output 'PASS payload=ROM-OTR-save-quest-free'
 Write-Output "PASS sha256=$sha256"

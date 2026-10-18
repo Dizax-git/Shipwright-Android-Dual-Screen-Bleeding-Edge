@@ -1,5 +1,44 @@
 # Android validation record
 
+## Official 9.3.0 / Android 9.3.0.1 host verification (2026-10-18)
+
+- Compiled source: `57d1a517aefca9baac449218eccb83cbb633206e`, based on official
+  `9.3.0` / `ecd889c2019b87e78b0a3d942a6a3fe98b7efaed`.
+  Official libultraship `62e973aeb4a53ad4d22bb91e2d9373ecdfcd246c` plus the
+  versioned Android-only patch; Torch `2ab12fe9660aec04e02ee89fe81baed304a1a1d6`.
+- Windows-native Torch generated the project archive; no ROM was required.
+  The official Windows release ZIP matched its published SHA-256
+  `bf46cfc41be17f3b63901db46dac46ac2a63ed3851aa13e3ba6c9ec5d0ac2632`.
+  Both project archives contain exactly 1,056 entries: 1,054 are byte-identical;
+  the HLSL and Metal shader texts differ only by CRLF/LF line endings. Android's
+  OpenGL shader is byte-identical. Bundled `soh.o2r` SHA-256:
+  `fb31ad1460b176a7ec3ab84469f5e909405fbb011c34be3bb8b618198713311b`.
+- Full Android source contracts passed (68 cases); Java release unit XML reports
+  have zero failures/errors, including versioned bundled-asset refresh. The host
+  modifier-stick executable passed. Android runtime target `soh` and its SDL2
+  dependency built successfully; the unrelated desktop Torch CLI is not an APK target.
+- Gradle 9.8 / JDK 21 ran through the installed shared desktop gate (ticket
+  `40407f41a1b642dca59bb4374362ddd0`), which recorded successful completion and
+  exit code 0. The wrapper and its exact daemon PID were confirmed exited.
+  Effective workers=2, no parallel projects, 3-GiB JVM budgets, one 512-MiB test
+  fork; every native compiler edge used a depth-2 Ninja pool, link depth=1.
+  Windows host MSBuild used `/m:2` and compiler `ProcessorNumber=1`.
+- Normalized APK: `Ship.of.Harkinian.Dual.Screen.9.3.0.1.apk`, package
+  `com.dishii.soh`, version `9.3.0.1`, code `903000001`, exactly `arm64-v8a`.
+  SHA-256 `9b691a6c6fa13549f7e912ddf35f94c77950a91188a0414b81867a5075dd6fbe`;
+  persistent signer `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004`.
+  Signing policy and independent verifier passed signature, ZIP 16-KiB alignment,
+  every ELF LOAD segment's 16-KiB alignment, package/version/ABI and nested-payload
+  checks. Both launcher libraries (`libSDL2.so`, `libsoh.so`) are present and all
+  DT_NEEDED dependencies resolve to a bundled library or an Android system library.
+  Canonical Torch YAML and the exact generated project archive are packaged;
+  legacy extractor XML is absent. No raw ROM, user-derived game archive, save or
+  quest payload is bundled.
+- No device was installed, launched or controlled. New-version device/gameplay
+  validation remains pending; historical runtime evidence below is not evidence
+  of this new release's runtime behavior. Existing persistent-signer installations
+  can update without an identity migration.
+
 ## Stable single-screen baseline (historical container evidence)
 
 Validated on 2026-08-21 before applying the dual-screen feature layer.

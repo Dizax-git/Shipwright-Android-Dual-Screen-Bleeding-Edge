@@ -17,7 +17,8 @@ function Test-Throws {
 function New-TestApk {
     param(
         [Parameter(Mandatory)][string] $Path,
-        [string[]] $Entries = @('lib/arm64-v8a/libmain.so', 'assets/soh.o2r')
+        [string[]] $Entries = @('lib/arm64-v8a/libsoh.so', 'lib/arm64-v8a/libSDL2.so', 'assets/soh.o2r'),
+        [uint64] $NativeAlignment = 16384
     )
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -39,6 +40,18 @@ function New-TestApk {
                         try { $writer.Write('fixture') } finally { $writer.Dispose() }
                     }
                     finally { $nested.Dispose() }
+                }
+                elseif ($name.EndsWith('.so')) {
+                    $elf = [byte[]]::new(120)
+                    $elf[0]=0x7f; $elf[1]=0x45; $elf[2]=0x4c; $elf[3]=0x46
+                    $elf[4]=2; $elf[5]=1; $elf[6]=1
+                    [BitConverter]::GetBytes([uint16]183).CopyTo($elf,18)
+                    [BitConverter]::GetBytes([uint64]64).CopyTo($elf,32)
+                    [BitConverter]::GetBytes([uint16]56).CopyTo($elf,54)
+                    [BitConverter]::GetBytes([uint16]1).CopyTo($elf,56)
+                    [BitConverter]::GetBytes([uint32]1).CopyTo($elf,64)
+                    [BitConverter]::GetBytes($NativeAlignment).CopyTo($elf,112)
+                    $entryStream.Write($elf,0,$elf.Length)
                 }
                 else {
                     $writer = [IO.StreamWriter]::new($entryStream)
@@ -84,6 +97,26 @@ Describe 'Shipwright Android APK release contract' {
         catch { $message = $_.Exception.Message }
         $message | Should Match ('0' * 64)
         $message | Should Match $expectedSigner
+    }
+
+    It 'rejects 4 KiB ELF LOAD alignment even when zipalign reports success' {
+        New-TestApk -Path $apk -NativeAlignment 4096
+        $message=$null
+        try {
+            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.5' -ExpectedVersionCode 902003005 `
+                -ExpectedSignerSha256 $expectedSigner -Aapt2 $aapt2 -Zipalign $zipalign -Apksigner $apksigner
+        } catch {$message=$_.Exception.Message}
+        $message | Should Match 'ELF LOAD alignment'
+    }
+
+    It 'rejects an APK missing the SDL runtime required by the Java launcher' {
+        New-TestApk -Path $apk -Entries @('lib/arm64-v8a/libsoh.so', 'assets/soh.o2r')
+        $message=$null
+        try {
+            & $verifierPath -Apk $apk -ExpectedVersion '9.2.3.5' -ExpectedVersionCode 902003005 `
+                -ExpectedSignerSha256 $expectedSigner -Aapt2 $aapt2 -Zipalign $zipalign -Apksigner $apksigner
+        } catch {$message=$_.Exception.Message}
+        $message | Should Match 'Missing runtime library: libSDL2.so'
     }
 
     It 'rejects a raw game payload' {
