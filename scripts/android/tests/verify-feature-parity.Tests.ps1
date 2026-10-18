@@ -5,7 +5,7 @@ $verifierPath = Join-Path $repositoryRoot 'scripts\android\verify-feature-parity
 
 Describe 'Three-source Android feature parity' {
     It 'proves the official, Waterdish, Chilhaps, and combined Thor contracts' {
-        $output = & $verifierPath -Repository $repositoryRoot -StableRef '9.2.3' `
+        $output = & $verifierPath -Repository $repositoryRoot -StableRef '9.3.0' `
             -WaterdishRef 'waterdish-reference/main' -DualScreenRef 'dual-screen-reference/main'
         $text = $output -join [Environment]::NewLine
 

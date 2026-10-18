@@ -218,7 +218,10 @@ public class MainActivity extends SDLActivity{
         File ootO2rFile = new File(targetRootFolder, "oot.o2r");
         File ootMqO2rFile = new File(targetRootFolder, "oot-mq.o2r");
 
-        boolean isMissingAssets = !assetsFolder.exists() || assetsFolder.listFiles() == null || assetsFolder.listFiles().length == 0;
+        boolean isMissingAssets = AssetCopyUtil.needsBundledAssetRefresh(
+                BuildConfig.VERSION_CODE,
+                getSharedPreferences("bundled-assets", MODE_PRIVATE).getInt("versionCode", 0),
+                new File(assetsFolder, "config.yml").isFile());
         boolean isMissingSohOtr = !sohOtrFile.exists() && !sohOtrFileLegacy.exists() && !ootO2rFile.exists() && !ootMqO2rFile.exists();
 
         if (!targetRootFolder.exists() || isMissingAssets || isMissingSohOtr) {
@@ -319,26 +322,34 @@ public class MainActivity extends SDLActivity{
             runOnUiThread(() -> Toast.makeText(this, "Assets copied", Toast.LENGTH_SHORT).show());
         } catch (IOException e) {
             e.printStackTrace();
-            runOnUiThread(() -> Toast.makeText(this, "Error copying assets", Toast.LENGTH_LONG).show());
+            showBundledAssetCopyError(targetRootFolder, e);
+            return;
         }
 
-        // Copy soh.o2r from internal assets if bundled (optional)
-        try (InputStream assetIn = getAssets().open("soh.o2r")) {
+        // Replace only the project-owned archive atomically; never touch oot.o2r or saves.
+        try {
             File targetOtrFile = new File(targetRootFolder, "soh.o2r");
-            targetOtrFile.delete();
-            try (OutputStream out = new FileOutputStream(targetOtrFile)) {
-                byte[] buffer = new byte[COPY_BUFFER_SIZE];
-                int read;
-                while ((read = assetIn.read(buffer)) != -1) {
-                    out.write(buffer, 0, read);
-                }
-            }
+            AssetCopyUtil.copyBundledFile(this, "soh.o2r", targetOtrFile);
+            getSharedPreferences("bundled-assets", MODE_PRIVATE).edit()
+                    .putInt("versionCode", BuildConfig.VERSION_CODE).apply();
             runOnUiThread(() -> Toast.makeText(this, "soh.o2r copied", Toast.LENGTH_SHORT).show());
         } catch (IOException e) {
-            // soh.o2r not bundled in APK assets or copy failed; user must provide their own
+            showBundledAssetCopyError(targetRootFolder, e);
+            return;
         }
 
         setupLatch.countDown();
+    }
+
+    private void showBundledAssetCopyError(File targetRootFolder, IOException error) {
+        Log.e("setupFiles", "Could not refresh bundled assets", error);
+        runOnUiThread(() -> new AlertDialog.Builder(this)
+                .setTitle("Asset setup failed")
+                .setMessage("The bundled assets could not be copied. Check available storage and permissions, then retry. Your ROMs and saves have not been removed.")
+                .setCancelable(false)
+                .setPositiveButton("Retry", (dialog, which) -> romImportExecutor
+                        .execute(() -> setupFilesInBackground(targetRootFolder)))
+                .show());
     }
 
 

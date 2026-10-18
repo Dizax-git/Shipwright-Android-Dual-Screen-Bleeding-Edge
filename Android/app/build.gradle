@@ -22,6 +22,10 @@ def syncSupportedRomHashes = tasks.register('syncSupportedRomHashes', Copy) {
     from rootProject.file('../docs/supportedHashes.json')
     into generatedCanonicalAssets
 }
+def syncTorchExtractorAssets = tasks.register('syncTorchExtractorAssets', Copy) {
+    from rootProject.file('../soh/assets/yml')
+    into generatedCanonicalAssets.map { it.dir('assets') }
+}
 if (buildAsApplication) {
     apply plugin: 'com.android.application'
 }
@@ -109,6 +113,7 @@ android {
         }
     }
     sourceSets.main.assets.srcDir(generatedCanonicalAssets)
+    sourceSets.main.assets.exclude('assets/extractor/**')
     lintOptions {
         abortOnError false
     }
@@ -139,6 +144,7 @@ tasks.configureEach { task ->
     def consumesAssetsDuringLint = task.name.toLowerCase().contains('lint')
     if (mergesAssets || consumesAssetsDuringLint) {
         task.dependsOn(syncSupportedRomHashes)
+        task.dependsOn(syncTorchExtractorAssets)
     }
 }
 

@@ -1635,7 +1635,7 @@ void SohInputEditorWindow::DrawLinkTab() {
                         .c_str(),
                     &modifierStickEnabled)) {
                 CVarSetInteger(enabledCVar.c_str(), modifierStickEnabled ? 1 : 0);
-                Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+                Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Hold the selected modifier and move the left stick to press the four C-buttons.\n"
@@ -1650,7 +1650,7 @@ void SohInputEditorWindow::DrawLinkTab() {
             if (ImGui::Combo(StringHelper::Sprintf("C-button modifier##port%d", portIndex).c_str(), &modifierIndex,
                              "M1\0M2\0\0")) {
                 CVarSetInteger(modifierCVar.c_str(), modifierIndex + 1);
-                Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+                Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
             }
             ImGui::EndDisabled();
         }
@@ -1688,7 +1688,7 @@ void SohInputEditorWindow::DrawLinkTab() {
             bool hideToggleBtn = CVarGetInteger("gDroidHideToggleButton", 0) != 0;
             if (ImGui::Checkbox("Hide Overlay Toggle Button##HideToggleBtn", &hideToggleBtn)) {
                 CVarSetInteger("gDroidHideToggleButton", hideToggleBtn ? 1 : 0);
-                Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+                Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
                 Ship::Mobile::SetToggleButtonVisible(!hideToggleBtn);
             }
             if (ImGui::IsItemHovered()) {
@@ -1698,7 +1698,7 @@ void SohInputEditorWindow::DrawLinkTab() {
             bool freeLookTouch = CVarGetInteger("gDroidFreeLookTouch", 0) != 0;
             if (ImGui::Checkbox("Enable right-side touch for free look##FreeLookTouch", &freeLookTouch)) {
                 CVarSetInteger("gDroidFreeLookTouch", freeLookTouch ? 1 : 0);
-                Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+                Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
                 Ship::Mobile::SetFreeLookTouchEnabled(freeLookTouch);
             }
             if (ImGui::IsItemHovered()) {

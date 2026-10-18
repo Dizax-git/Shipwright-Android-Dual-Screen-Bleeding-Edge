@@ -7,6 +7,8 @@ param(
     [string] $CMakePath,
     [string] $ReferenceSohO2r,
     [switch] $UseCurrentCheckout,
+    [string] $ThreadName,
+    [switch] $DeferWorkingDirectoryCleanup,
     [switch] $KeepWorkingDirectoryOnFailure
 )
 

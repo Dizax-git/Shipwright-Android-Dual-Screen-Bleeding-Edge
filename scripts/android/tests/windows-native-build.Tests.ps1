@@ -47,6 +47,17 @@ function New-ArchiveFixture {
 }
 
 Describe 'Windows-native Shipwright Android build contract' {
+    It 'uses the exact stable Torch asset packer and managed desktop Gradle gate' {
+        $module = Get-Content -LiteralPath $modulePath -Raw
+        $cmake = Get-Content -LiteralPath $cmakePath -Raw
+        $module | Should Match 'invoke_gradle_build_gate\.py'
+        $module | Should Match 'DeferWorkingDirectoryCleanup'
+        $module | Should Match 'SOH_TOOLS_ONLY=ON'
+        $module | Should Match '\$generatedO2r = Join-Path \$hostBuild'
+        $cmake | Should Match 'add_subdirectory\(torch SYSTEM\)'
+        $cmake | Should Match 'libultraship-android\.patch'
+        $cmake | Should Not Match 'ffast-math'
+    }
     It 'ships a testable module and one release entry point' {
         (Test-Path -LiteralPath $modulePath -PathType Leaf) | Should Be $true
         (Test-Path -LiteralPath $entryPointPath -PathType Leaf) | Should Be $true

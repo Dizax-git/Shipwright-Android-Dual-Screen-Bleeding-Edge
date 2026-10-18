@@ -8,11 +8,11 @@ Describe 'Shipwright Android release version contract' {
     It 'uses one parser-safe monotonic version manifest' {
         $version = & $resolverPath -Properties $versionPath
 
-        $version.UpstreamVersion | Should Be '9.2.3'
-        $version.PortRevision | Should Be 5
-        $version.VersionName | Should Be '9.2.3.5'
-        $version.VersionCode | Should Be 902003005
-        $version.ReleaseTag | Should Be '9.2.3.5'
+        $version.UpstreamVersion | Should Be '9.3.0'
+        $version.PortRevision | Should Be 1
+        $version.VersionName | Should Be '9.3.0.1'
+        $version.VersionCode | Should Be 903000001
+        $version.ReleaseTag | Should Be '9.3.0.1'
     }
 
     It 'makes the Gradle build consume the shared version manifest' {

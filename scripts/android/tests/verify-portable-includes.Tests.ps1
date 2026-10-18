@@ -45,6 +45,17 @@ Describe 'Android archived ROM import boundary' {
         $script:mainActivity = Get-Content -LiteralPath $mainActivityPath -Raw
     }
 
+    It 'refreshes only APK-owned Torch metadata and the project archive on updates' {
+        $mainActivity | Should Match 'needsBundledAssetRefresh'
+        $mainActivity | Should Match 'getInt\("versionCode", 0\)'
+        $mainActivity | Should Match 'putInt\("versionCode", BuildConfig.VERSION_CODE\)'
+        $mainActivity | Should Match 'copyBundledFile\(this, "soh\.o2r", targetOtrFile\)'
+        $gradle = Get-Content -LiteralPath (Join-Path $repositoryRoot 'Android\app\build.gradle') -Raw
+        $gradle | Should Match 'syncTorchExtractorAssets'
+        $gradle | Should Match 'soh/assets/yml'
+        $gradle | Should Match 'assets\.exclude\(''assets/extractor/\*\*''\)'
+    }
+
     It 'advertises raw ZIP and 7z selections' {
         $mainActivity | Should Match 'application/octet-stream'
         $mainActivity | Should Match 'application/zip'

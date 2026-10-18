@@ -7,6 +7,7 @@ set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
 
 project(Ship VERSION 9.3.0 LANGUAGES C CXX)
+option(SOH_TOOLS_ONLY "Configure only the asset tools, skipping libultraship and soh" OFF)
 
 # Gradle worker limits do not constrain the Ninja process used by AGP's
 # externalNativeBuild task. Keep Android compilation within the same two-job
@@ -16,6 +17,25 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(CMAKE_JOB_POOL_COMPILE soh_android_compile)
     set(CMAKE_JOB_POOL_LINK soh_android_link)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    find_package(Git REQUIRED)
+    set(_android_lus_patch "${CMAKE_CURRENT_SOURCE_DIR}/patches/libultraship-android.patch")
+    execute_process(COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${_android_lus_patch}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libultraship
+        RESULT_VARIABLE _lus_patch_present OUTPUT_QUIET ERROR_QUIET)
+    if(NOT _lus_patch_present EQUAL 0)
+        execute_process(COMMAND ${GIT_EXECUTABLE} apply --check ${_android_lus_patch}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libultraship
+            RESULT_VARIABLE _lus_patch_check ERROR_VARIABLE _lus_patch_error)
+        if(NOT _lus_patch_check EQUAL 0)
+            message(FATAL_ERROR "Pinned Android libultraship patch conflict: ${_lus_patch_error}")
+        endif()
+        execute_process(COMMAND ${GIT_EXECUTABLE} apply ${_android_lus_patch}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libultraship
+            RESULT_VARIABLE _lus_patch_apply ERROR_VARIABLE _lus_patch_error)
+        if(NOT _lus_patch_apply EQUAL 0)
+            message(FATAL_ERROR "Android libultraship patch failed: ${_lus_patch_error}")
+        endif()
+    endif()
 endif()
 
 include(CMake/soh-cvars.cmake)
@@ -114,7 +134,11 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     endif()
 
     vcpkg_bootstrap()
-    vcpkg_install_packages(zlib bzip2 libzip libpng sdl2 sdl2-net glew glfw3 nlohmann-json tinyxml2 spdlog libogg libvorbis opus opusfile)
+    if(SOH_TOOLS_ONLY)
+        vcpkg_install_packages(zlib spdlog)
+    else()
+        vcpkg_install_packages(zlib bzip2 libzip libpng sdl2 sdl2-net glew glfw3 nlohmann-json tinyxml2 spdlog libogg libvorbis opus opusfile)
+    endif()
     if (CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache|sccache")
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)
     endif()
@@ -454,5 +478,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set(CPACK_GENERATOR "Bundle")
 endif()
 
-set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/CMake/Packaging-2.cmake)
-include(CMake/Packaging.cmake)
+if(NOT ANDROID)
+    set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/CMake/Packaging-2.cmake)
+    include(CMake/Packaging.cmake)
+endif()

@@ -11,7 +11,7 @@ Describe 'Waterdish mobile behavior retained by the modern Android layer' {
         $script:gui = Get-Content -LiteralPath (
             Join-Path $repositoryRoot 'libultraship\src\ship\window\gui\Gui.cpp') -Raw
         $script:glesShader = Get-Content -LiteralPath (
-            Join-Path $repositoryRoot 'libultraship\src\fast\shaders\opengl\default.shader.vs') -Raw
+            Join-Path $repositoryRoot 'libultraship\src\fast\shaders\opengl\default.shader.glsl') -Raw
         $script:interpreter = Get-Content -LiteralPath (
             Join-Path $repositoryRoot 'libultraship\src\fast\interpreter.cpp') -Raw
     }

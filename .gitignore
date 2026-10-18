@@ -462,3 +462,6 @@ soh/properties.h
 /clang-format.exe
 *.o2r
 local.properties
+# Retired extractor submodule checkouts are not part of the Torch-based build.
+/OTRExporter/
+/ZAPDTR/

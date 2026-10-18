@@ -22,7 +22,7 @@ bool sHudPassPaused = false;
 float sSavedAspectRatio = 4.0f / 3.0f;
 
 std::shared_ptr<Fast::Interpreter> GetInterpreter() {
-    auto context = Ship::Context::GetInstance();
+    auto context = Ship::Context::GetRawInstance();
     if (context == nullptr) {
         return nullptr;
     }

@@ -2,6 +2,7 @@ package com.dishii.soh;
 
 import android.content.Context;
 import android.content.res.AssetManager;
+import android.util.AtomicFile;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -10,6 +11,27 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public class AssetCopyUtil {
+
+    public static boolean needsBundledAssetRefresh(int currentVersion, int copiedVersion, boolean hasTorchConfig) {
+        return currentVersion != copiedVersion || !hasTorchConfig;
+    }
+
+    public static void copyBundledFile(Context context, String assetPath, File destination) throws IOException {
+        AtomicFile atomic = new AtomicFile(destination);
+        FileOutputStream output = null;
+        try (InputStream input = context.getAssets().open(assetPath)) {
+            output = atomic.startWrite();
+            byte[] buffer = new byte[65536];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+            }
+            atomic.finishWrite(output);
+        } catch (IOException error) {
+            atomic.failWrite(output);
+            throw error;
+        }
+    }
 
     public static void copyAssetsToExternal(Context context, String assetsFolderPath, String externalFolderPath) throws IOException {
         AssetManager assetManager = context.getAssets();
@@ -30,32 +52,8 @@ public class AssetCopyUtil {
                 // Recursively copy contents of the directory
                 copyAssetsToExternal(context, assetPath, externalPath);
             } else {
-                // It's a file
-                File externalFile = new File(externalPath);
-                if (!externalFile.exists()) {
-                    // Check if the file exists in the external storage
-                    InputStream in = null;
-                    OutputStream out = null;
-
-                    try {
-                        in = assetManager.open(assetPath);
-                        out = new FileOutputStream(externalPath);
-
-                        byte[] buffer = new byte[1024];
-                        int read;
-                        while ((read = in.read(buffer)) != -1) {
-                            out.write(buffer, 0, read);
-                        }
-
-                    } finally {
-                        if (in != null) {
-                            in.close();
-                        }
-                        if (out != null) {
-                            out.close();
-                        }
-                    }
-                }
+                // Only APK-owned extractor metadata is refreshed here, never user ROMs or saves.
+                copyBundledFile(context, assetPath, new File(externalPath));
             }
         }
     }

@@ -1,12 +1,12 @@
 # Android Dual-Screen Source Provenance
 
-Verified on 2026-08-21. Official stable source is the newest non-draft, non-prerelease HarbourMasters release available at implementation start.
+Stable base revalidated on 2026-10-18. Official stable source is the newest non-draft, non-prerelease HarbourMasters release, including the official Torch asset pipeline and strict floating-point behavior.
 
 ## Source refs
 
 | Repository | Ref | Commit |
 |---|---|---|
-| HarbourMasters/Shipwright | `9.2.3` | cb71e22a79bc5d1f688fa881795bbd93094895fc |
+| HarbourMasters/Shipwright | `9.3.0` | ecd889c2019b87e78b0a3d942a6a3fe98b7efaed |
 | please-be-nice/Shipwright-android | `android-reference/android-port-923` | f8dc697418096324ead7420dafbceabfcc3bf8bc |
 | chilhaps/Shipwright-Android-Dual-Screen | `dual-screen-reference/main` | 33185ad59e011959aa6a6fbcf4a854f123b7e4a3 |
 | Waterdish/Shipwright-Android | `waterdish-reference/main` | c9d8f4a1219d4db0b577a050634679f72f7b3595 |
@@ -16,7 +16,10 @@ Verified on 2026-08-21. Official stable source is the newest non-draft, non-prer
 
 ## Source policy
 
-- Official game behavior comes from Shipwright 9.2.3.
+- Official game behavior comes from Shipwright 9.3.0. The historical classification below records the original 9.2.3 Android audit, not the current gameplay base.
+- Current official libultraship gitlink: `62e973aeb4a53ad4d22bb91e2d9373ecdfcd246c`; Torch: `2ab12fe9660aec04e02ee89fe81baed304a1a1d6`. The versioned `patches/libultraship-android.patch` carries only the audited Android input/gyro/rumble/UI compatibility behavior onto the exact official library.
+- ZAPDTR and OTRExporter are retired from the build. Android ROM import retains archive/hash validation and uses official Torch extraction with bundled YML metadata. APK-owned metadata and `soh.o2r` refresh on version changes; user ROM archives, `oot.o2r`, mods and saves are not overwritten by that refresh.
+- The old language-overlay exclusion is no longer carried: language support is now part of the official 9.3.0 source. The old Android fast-math/near-zero collision workaround is superseded by official strict floating-point behavior.
 - The modern Android reference supplies audited Android platform integration and Android-compatible submodules.
 - The Waterdish reference defines the original Android user-facing and build behavior. Its implementation is carried forward through the audited modern Android layer rather than by importing obsolete 9.0.2 gameplay code.
 - The Chilhaps reference defines the dual-screen behavior and is adapted to the maintained renderer API. The Thor composition additionally moves the preserved Waterdish touch layer to the secondary presentation with primary-display fallback.

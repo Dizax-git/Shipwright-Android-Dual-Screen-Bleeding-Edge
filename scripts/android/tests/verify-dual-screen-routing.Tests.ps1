@@ -15,11 +15,11 @@ Describe 'Dual-screen HUD routing contract' {
     }
 
     It 'returns target feedback and enemy health to the primary framebuffer' {
-        $interface | Should Match '(?s)DualScreenHUD_PauseHudPass\(\).*?func_8002C124\(&play->actorCtx\.targetCtx, play\).*?Interface_DrawEnemyHealthBar\(&play->actorCtx\.targetCtx, play\);.*?DualScreenHUD_ResumeHudPass\(\);'
+        $interface | Should Match '(?s)DualScreenHUD_PauseHudPass\(\).*?Attention_Draw\(&play->actorCtx\.targetCtx, play\).*?Interface_DrawEnemyHealthBar\(&play->actorCtx\.targetCtx, play\);.*?DualScreenHUD_ResumeHudPass\(\);'
     }
 
     It 'presents once after all interpolation samples' {
-        $renderLoop | Should Match '(?s)for \(const auto& m : mtx_replacements\).*?DrawAndRunGraphicsCommands\(Commands, m\);.*?mInterpolationIndex\+\+;.*?\}\s*DualScreenHUD_PresentFrame\(\);\s*ImGui::PopStyleColor'
+        $renderLoop | Should Match '(?s)for \(int i = 0; i < count; i\+\+\).*?FrameInterpolation_Interpolate.*?DrawAndRunGraphicsCommands\(Commands, mtx_replacements\);.*?mInterpolationIndex\+\+;.*?\}\s*DualScreenHUD_PresentFrame\(\);\s*ImGui::PopStyleColor'
     }
 
     It 'offers the Android UI setting enabled by default' {

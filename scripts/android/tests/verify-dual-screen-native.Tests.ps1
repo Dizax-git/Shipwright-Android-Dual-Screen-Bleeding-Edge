@@ -49,8 +49,8 @@ Describe 'Dual-screen native renderer contract' {
     }
 
     It 'temporarily restores the primary HUD target without starting a second clearing pass' {
-        $parameter | Should Match '(?s)DualScreenHUD_PauseHudPass\(\).*?func_8002C124.*?Interface_DrawEnemyHealthBar.*?DualScreenHUD_ResumeHudPass\(\)'
-        $parameter | Should Not Match '(?s)DualScreenHUD_EndHudPass\(\).*?func_8002C124.*?DualScreenHUD_BeginHudPass\(\)'
+        $parameter | Should Match '(?s)DualScreenHUD_PauseHudPass\(\).*?Attention_Draw.*?Interface_DrawEnemyHealthBar.*?DualScreenHUD_ResumeHudPass\(\)'
+        $parameter | Should Not Match '(?s)DualScreenHUD_EndHudPass\(\).*?Attention_Draw.*?DualScreenHUD_BeginHudPass\(\)'
     }
 
     It 'clears only when beginning a frame and never when resuming the HUD target' {

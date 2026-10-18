@@ -18,6 +18,20 @@ function Invoke-SohProcess {
     $originalDirectory = (Get-Location).Path
     try {
         Set-Location -LiteralPath $WorkingDirectory
+        if ([IO.Path]::GetFileName($FilePath) -eq 'gradlew.bat' -and $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
+            $gate = Join-Path $env:USERPROFILE '.agents\skills\gradle-build-gate\scripts\invoke_gradle_build_gate.py'
+            if (-not (Test-Path -LiteralPath $gate -PathType Leaf)) {
+                throw 'Installed Gradle build gate is unavailable; refusing direct Gradle execution.'
+            }
+            $gateArguments = @($gate, 'run', '--project', $WorkingDirectory,
+                '--owner-task', 'Shipwright release tests and arm64 build')
+            if ($script:BuildThreadName) { $gateArguments += @('--thread-name', $script:BuildThreadName) }
+            $gateArguments += '--'
+            $gateArguments += @($Arguments | Where-Object { $_ -ne '--no-daemon' })
+            & python @gateArguments | ForEach-Object { Write-Host $_ }
+            if ($LASTEXITCODE -ne 0) { throw "Managed Gradle build failed: $LASTEXITCODE" }
+            return [pscustomobject]@{ ExitCode = 0; Output = '' }
+        }
         $lines = @(& $FilePath @Arguments 2>&1 | ForEach-Object { [string] $_ })
         $exitCode = $LASTEXITCODE
     }
@@ -250,6 +264,8 @@ function Invoke-SohWindowsAndroidBuild {
         [string] $CMakePath,
         [string] $ReferenceSohO2r,
         [switch] $UseCurrentCheckout,
+        [string] $ThreadName,
+        [switch] $DeferWorkingDirectoryCleanup,
         [switch] $KeepWorkingDirectoryOnFailure
     )
 
@@ -270,6 +286,7 @@ function Invoke-SohWindowsAndroidBuild {
     [IO.Directory]::CreateDirectory($output) | Out-Null
 
     $succeeded = $false
+    $script:BuildThreadName = $ThreadName
     $oldVcpkgRoot = $env:VCPKG_ROOT
     $oldVcpkgCache = $env:VCPKG_DEFAULT_BINARY_CACHE
     $oldGradleHome = $env:GRADLE_USER_HOME
@@ -319,13 +336,13 @@ function Invoke-SohWindowsAndroidBuild {
         $hostBuild = Join-Path $working 'host-build'
         $null = Invoke-SohProcess -FilePath $cmake -Arguments @(
             '-S', $source, '-B', $hostBuild, '-G', 'Visual Studio 17 2022', '-T', 'v143', '-A', 'x64',
-            "-DVCPKG_ROOT:PATH=$vcpkg", '-DCMAKE_BUILD_TYPE:STRING=Release'
+            "-DVCPKG_ROOT:PATH=$vcpkg", '-DCMAKE_BUILD_TYPE:STRING=Release', '-DSOH_TOOLS_ONLY=ON'
         ) -WorkingDirectory $working
         $null = Invoke-SohProcess -FilePath $cmake -Arguments @(
             '--build', $hostBuild, '--config', 'Release', '--target', 'GenerateSohOtr', '--parallel', '2'
         ) -WorkingDirectory $working
 
-        $generatedO2r = Join-Path $source 'soh\soh.o2r'
+        $generatedO2r = Join-Path $hostBuild 'soh\soh.o2r'
         $manifestHash = Assert-SohArchive -Path $generatedO2r
         if ($ReferenceSohO2r) {
             $referenceHash = Assert-SohArchive -Path $ReferenceSohO2r
@@ -378,7 +395,10 @@ function Invoke-SohWindowsAndroidBuild {
         $env:VCPKG_DEFAULT_BINARY_CACHE = $oldVcpkgCache
         $env:GRADLE_USER_HOME = $oldGradleHome
         $env:CMAKE_BUILD_PARALLEL_LEVEL = $oldCMakeBuildParallelLevel
-        if ($succeeded -or -not $KeepWorkingDirectoryOnFailure) {
+        if ($DeferWorkingDirectoryCleanup) {
+            Write-Host "Working directory retained for the caller's exact transactional cleanup: $working"
+        }
+        elseif ($succeeded -or -not $KeepWorkingDirectoryOnFailure) {
             Remove-SohDirectory -Path $working
         }
         elseif (Test-Path -LiteralPath $working) {
