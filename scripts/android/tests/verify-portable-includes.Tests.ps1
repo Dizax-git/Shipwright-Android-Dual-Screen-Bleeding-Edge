@@ -12,12 +12,11 @@ Describe 'Android libc++ portability includes' {
 }
 
 Describe 'Stable gameplay behavior retained by the Android overlay' {
-    It 'does not import the undefined Android-reference talk-skip hook' {
+    It 'retains the now-official stable talk hook rather than the old Android exclusion' {
         $sourcePath = Join-Path $repositoryRoot 'soh\src\overlays\actors\ovl_player_actor\z_player.c'
         $source = Get-Content -LiteralPath $sourcePath -Raw
 
-        $source | Should Not Match 'VB_SKIP_TALKING'
-        $source | Should Match 'this->currentMask = sSavedCurrentMask;\s+Player_StartTalking\(play, talkOfferActor\);'
+        $source | Should Match 'this->currentMask = sSavedCurrentMask;\s+if \(GameInteractor_Should\(VB_SKIP_TALKING, true\)\) \{\s+Player_StartTalking\(play, talkOfferActor\);'
     }
 }
 
