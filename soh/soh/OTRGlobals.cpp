@@ -719,7 +719,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                                 promptStep = PS_FILE_CHECK;
                                 return;
                             }
-                            extract.CallZapd(installPath, Ship::Context::GetAppDirectoryPath(appShortName),
+                            extract.CallTorch(installPath, Ship::Context::GetAppDirectoryPath(appShortName),
                                              &extractCount, &totalExtract);
                             generatedIsMQ = extract.IsMasterQuest();
                             promptStep = PS_SECOND;
@@ -757,7 +757,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                                         extractStep = ES_VERIFY;
                                         return;
                                     }
-                                    extract.CallZapd(installPath, Ship::Context::GetAppDirectoryPath(appShortName),
+                                    extract.CallTorch(installPath, Ship::Context::GetAppDirectoryPath(appShortName),
                                                      &extractCount, &totalExtract);
                                     extractStep = ES_VERIFY;
                                     extractCount = 0;

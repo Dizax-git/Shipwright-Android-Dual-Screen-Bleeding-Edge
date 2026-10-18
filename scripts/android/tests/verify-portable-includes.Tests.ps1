@@ -55,6 +55,13 @@ Describe 'Android archived ROM import boundary' {
         $gradle | Should Match 'assets\.exclude\(''assets/extractor/\*\*''\)'
     }
 
+    It 'uses official Torch extraction in both Android picker callbacks' {
+        $source = Get-Content -LiteralPath (Join-Path $repositoryRoot 'soh\soh\OTRGlobals.cpp') -Raw
+        $source | Should Not Match '\.CallZapd\('
+        $source | Should Match '(?s)case PS_FIRST:.*?__ANDROID__.*?extract\.CallTorch\('
+        $source | Should Match '(?s)case PS_SECOND:.*?__ANDROID__.*?extract\.CallTorch\('
+    }
+
     It 'advertises raw ZIP and 7z selections' {
         $mainActivity | Should Match 'application/octet-stream'
         $mainActivity | Should Match 'application/zip'
