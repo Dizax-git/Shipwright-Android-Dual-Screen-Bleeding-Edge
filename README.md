@@ -4,7 +4,7 @@ This is an **unofficial Android dual-screen port** of [HarbourMasters/Shipwright
 
 “Bleeding Edge” means this repository is intended to follow the latest stable upstream Shipwright release. It does not use Shipwright development/nightly builds as its release base.
 
-Current base: Shipwright `9.2.3` (`cb71e22a79bc5d1f688fa881795bbd93094895fc`). The exact source and submodule lineage is recorded in [Android provenance](docs/android/PROVENANCE.md), and the verified build contract is in [Android validation](docs/android/VALIDATION.md).
+Current base: Shipwright `9.3.0` (`ecd889c2019b87e78b0a3d942a6a3fe98b7efaed`), including its official Torch asset pipeline. The exact source and submodule lineage is recorded in [Android provenance](docs/android/PROVENANCE.md), and build evidence is recorded in [Android validation](docs/android/VALIDATION.md).
 
 ## Download and game setup
 
@@ -56,7 +56,7 @@ With Shipwright closed, run:
 
 The updater validates the rewritten JSON and replaces the original atomically without creating a backup file.
 
-Android release identity is defined once in `Android/version.properties`. The APK version name, GitHub tag, and APK filename use the same numeric four-component form, such as `9.2.3.5`; descriptive **Dual Screen** wording belongs only in the release title. Both the APK verifier and build reject mismatched version metadata so every published revision remains a real Android update.
+Android release identity is defined once in `Android/version.properties`. The APK version name, GitHub tag, and APK filename use the same numeric four-component form, such as `9.3.0.1`; descriptive **Dual Screen** wording belongs only in the release title. Both the APK verifier and build reject mismatched version metadata so every published revision remains a real Android update.
 
 The preserved feature contract from the official, Waterdish Android, and Chilhaps dual-screen sources is recorded in [Android feature parity](docs/android/FEATURE_PARITY.md).
 

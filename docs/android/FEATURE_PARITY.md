@@ -4,8 +4,8 @@ This fork composes three source contracts rather than treating any one Android t
 
 | Source | Pinned source | Preserved contract | Current evidence |
 |---|---|---|---|
-| HarbourMasters/Shipwright | `9.2.3` at `cb71e22a79bc5d1f688fa881795bbd93094895fc` | Complete stable game, randomizer, renderer, assets, and desktop behavior | The stable commit is an ancestor of this branch; excluded Android-reference divergences are checked against the stable tree by `verify-overlay.ps1`. |
-| Waterdish/Shipwright-Android | `main` at `c9d8f4a1219d4db0b577a050634679f72f7b3595` | Android 7+ application, setup and migration, shared `SOH` storage, mods, system ROM picker, touch controller, free-look/aiming, rumble, controller Back handling, controller database, keep-awake behavior, multi-ABI debug build, and arm64 release build | `verify-feature-parity.ps1`, Android unit tests, the Windows-native build contract, and the Android CI workflow check the maintained 9.2.3 implementations. Raw `.z64`, `.zip`, and `.7z` import extends the original picker without removing raw-ROM support. The obsolete reference container is deliberately not retained. |
+| HarbourMasters/Shipwright | `9.3.0` at `ecd889c2019b87e78b0a3d942a6a3fe98b7efaed` | Complete stable game, randomizer, renderer, Torch extraction, assets, and desktop behavior | Exact stable commit is an ancestor of this branch. The carried source diff is audited separately from the official gameplay tree; the now-official language and talk-hook behavior is preserved. |
+| Waterdish/Shipwright-Android | `main` at `c9d8f4a1219d4db0b577a050634679f72f7b3595` | Android 7+ application, setup and migration, shared `SOH` storage, mods, system ROM picker, touch controller, free-look/aiming, rumble, controller Back handling, controller database, keep-awake behavior, multi-ABI debug build, and arm64 release build | `verify-feature-parity.ps1`, Android unit tests, the Windows-native build contract, and Android CI check the adapted platform implementation. Raw `.z64`, `.zip`, and `.7z` import retains supported-hash validation. Official Torch YML metadata replaces ZAPD XML; version-aware refresh touches only APK-owned metadata and `soh.o2r`, not user ROMs or saves. The obsolete reference container is deliberately not retained. |
 | chilhaps/Shipwright-Android-Dual-Screen | `main` at `33185ad59e011959aa6a6fbcf4a854f123b7e4a3` | Presentation-display discovery, secondary native surface, shared-context HUD renderer, 4:3 HUD presentation, gameplay HUD routing, menu toggle, and primary targeting/enemy-health rendering | Java lifecycle tests, native/routing contract tests, and `verify-feature-parity.ps1` cover the port against the maintained renderer API. |
 
 ## Thor composition
@@ -33,7 +33,7 @@ Run:
 ```powershell
 .\scripts\android\verify-feature-parity.ps1 `
   -Repository . `
-  -StableRef 9.2.3 `
+  -StableRef 9.3.0 `
   -WaterdishRef waterdish-reference/main `
   -DualScreenRef dual-screen-reference/main
 ```

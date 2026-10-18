@@ -16,6 +16,7 @@ $ErrorActionPreference = 'Stop'
 $modulePath = Join-Path $PSScriptRoot 'WindowsNativeBuild.psm1'
 Import-Module $modulePath -Force
 
+$PSBoundParameters['RepositoryRoot'] = $RepositoryRoot
 $result = Invoke-SohWindowsAndroidBuild @PSBoundParameters
 
 # PowerShell propagates the last native process exit code when this script is

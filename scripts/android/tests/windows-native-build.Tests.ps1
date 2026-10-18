@@ -57,6 +57,8 @@ Describe 'Windows-native Shipwright Android build contract' {
         $cmake | Should Match 'add_subdirectory\(torch SYSTEM\)'
         $cmake | Should Match 'libultraship-android\.patch'
         $cmake | Should Not Match 'ffast-math'
+        $gradle = Get-Content -LiteralPath (Join-Path $repositoryRoot 'Android\app\build.gradle') -Raw
+        $gradle | Should Match '(?s)debug\s*\{.*?targets ''soh''.*?release\s*\{.*?targets ''soh'''
     }
     It 'ships a testable module and one release entry point' {
         (Test-Path -LiteralPath $modulePath -PathType Leaf) | Should Be $true
@@ -154,6 +156,7 @@ Describe 'Windows-native Shipwright Android build contract' {
     It 'returns success after a completed build even when a native tool left a stale exit code' {
         $script = Get-Content -LiteralPath $entryPointPath -Raw
         $script | Should Match '\$result\s*=\s*Invoke-SohWindowsAndroidBuild'
+        $script | Should Match '\$PSBoundParameters\[''RepositoryRoot''\]\s*=\s*\$RepositoryRoot'
         $script | Should Match '\$global:LASTEXITCODE\s*=\s*0'
         $script | Should Match '(?m)^\s*\$result\s*$'
     }
