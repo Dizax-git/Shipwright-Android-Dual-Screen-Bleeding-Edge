@@ -291,6 +291,9 @@ function Invoke-SohWindowsAndroidBuild {
     $oldVcpkgCache = $env:VCPKG_DEFAULT_BINARY_CACHE
     $oldGradleHome = $env:GRADLE_USER_HOME
     $oldCMakeBuildParallelLevel = $env:CMAKE_BUILD_PARALLEL_LEVEL
+    $oldVcpkgVisualStudioPath = $env:VCPKG_VISUAL_STUDIO_PATH
+    $oldVs170CommonTools = $env:vs170comntools
+    $oldVcpkgMaxConcurrency = $env:VCPKG_MAX_CONCURRENCY
     try {
         # CMake's build parallelism is independent of Gradle's worker limit.
         # Keep both direct host builds and AGP's nested Ninja build bounded.
@@ -298,7 +301,13 @@ function Invoke-SohWindowsAndroidBuild {
         $git = (Get-Command git -ErrorAction Stop).Source
         $python = (Get-Command python -ErrorAction Stop).Source
         $java = (Get-Command java -ErrorAction Stop).Source
-        $null = Assert-SohVisualStudio
+        $visualStudio = Assert-SohVisualStudio
+        # Use the same component-qualified installation for CMake and vcpkg.
+        # vs170comntools also supplies vcpkg's supported developer-environment
+        # discovery path when its vswhere scan omits another installed instance.
+        $env:VCPKG_VISUAL_STUDIO_PATH = $visualStudio
+        $env:vs170comntools = Join-Path $visualStudio 'Common7\Tools'
+        $env:VCPKG_MAX_CONCURRENCY = '2'
         $sdk = Resolve-SohAndroidSdk -ExplicitPath $AndroidSdkRoot
         $cmake = Resolve-SohCMake -ExplicitPath $CMakePath -AndroidSdkRoot $sdk
         $ndk = Join-Path $sdk "ndk\$script:NdkVersion"
@@ -336,7 +345,8 @@ function Invoke-SohWindowsAndroidBuild {
         $hostBuild = Join-Path $working 'host-build'
         $null = Invoke-SohProcess -FilePath $cmake -Arguments @(
             '-S', $source, '-B', $hostBuild, '-G', 'Visual Studio 17 2022', '-T', 'v143', '-A', 'x64',
-            "-DVCPKG_ROOT:PATH=$vcpkg", '-DCMAKE_BUILD_TYPE:STRING=Release', '-DSOH_TOOLS_ONLY=ON'
+            "-DVCPKG_ROOT:PATH=$vcpkg", "-DCMAKE_GENERATOR_INSTANCE:PATH=$visualStudio",
+            '-DCMAKE_BUILD_TYPE:STRING=Release', '-DSOH_TOOLS_ONLY=ON'
         ) -WorkingDirectory $working
         $null = Invoke-SohProcess -FilePath $cmake -Arguments @(
             '--build', $hostBuild, '--config', 'Release', '--target', 'GenerateSohOtr', '--parallel', '2'
@@ -395,6 +405,9 @@ function Invoke-SohWindowsAndroidBuild {
         $env:VCPKG_DEFAULT_BINARY_CACHE = $oldVcpkgCache
         $env:GRADLE_USER_HOME = $oldGradleHome
         $env:CMAKE_BUILD_PARALLEL_LEVEL = $oldCMakeBuildParallelLevel
+        $env:VCPKG_VISUAL_STUDIO_PATH = $oldVcpkgVisualStudioPath
+        $env:vs170comntools = $oldVs170CommonTools
+        $env:VCPKG_MAX_CONCURRENCY = $oldVcpkgMaxConcurrency
         if ($DeferWorkingDirectoryCleanup) {
             Write-Host "Working directory retained for the caller's exact transactional cleanup: $working"
         }
