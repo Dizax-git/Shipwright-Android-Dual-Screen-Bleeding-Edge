@@ -30,7 +30,7 @@ jobs:
       - name: Install pinned Android build packages
         shell: pwsh
         run: |
-          sdkmanager 'platforms;android-31' 'build-tools;35.0.0' 'ndk;26.0.10792818' 'cmake;3.31.5'
+          sdkmanager 'platforms;android-31' 'build-tools;35.0.0' 'ndk;29.0.14206865' 'cmake;3.31.5'
 
       - name: Build and test the unsigned Android candidate
         shell: pwsh

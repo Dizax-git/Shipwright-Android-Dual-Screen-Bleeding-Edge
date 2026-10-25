@@ -18,6 +18,13 @@ Describe 'Android continuous-integration parity contract' {
         $workflow | Should Not Match '(?m)^\s*container:'
     }
 
+    It 'installs the NDK required by the shared builder' {
+        $builder = Get-Content (Join-Path $repositoryRoot 'scripts/android/WindowsNativeBuild.psm1') -Raw
+        $pin = [regex]::Match($builder, '\$script:NdkVersion = ''([^'']+)''').Groups[1].Value
+        $pin | Should Not BeNullOrEmpty
+        $workflow | Should Match ([regex]::Escape("'ndk;$pin'"))
+    }
+
     It 'uses the tested Windows-native builder through a short isolated clone' {
         $workflow | Should Match 'Build-WindowsAndroidRelease\.ps1'
         $workflow | Should Match "Join-Path \`$env:RUNNER_TEMP 'w'"
