@@ -1,3 +1,69 @@
+# Shipwright Android Dual Screen — Bleeding Edge
+
+This is an **unofficial Android dual-screen port** of [HarbourMasters/Shipwright](https://github.com/HarbourMasters/Shipwright). It keeps the dual-screen implementation from [chilhaps/Shipwright-Android-Dual-Screen](https://github.com/chilhaps/Shipwright-Android-Dual-Screen), adapts it to the current renderer, and layers it over the newest validated **stable** Shipwright release with the modern Android compatibility work derived from [please-be-nice/Shipwright-android](https://github.com/please-be-nice/Shipwright-android).
+
+“Bleeding Edge” means this repository is intended to follow the latest stable upstream Shipwright release. It does not use Shipwright development/nightly builds as its release base.
+
+Current base: Shipwright `9.3.0` (`ecd889c2019b87e78b0a3d942a6a3fe98b7efaed`), including its official Torch asset pipeline. The exact source and submodule lineage is recorded in [Android provenance](docs/android/PROVENANCE.md), and build evidence is recorded in [Android validation](docs/android/VALIDATION.md).
+
+## Download and game setup
+
+Download the persistently signed arm64 APK from [GitHub Releases](https://github.com/Darkaxt/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases). Release APKs use package `com.dishii.soh` and signer SHA-256 `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004`, so later releases can update an existing installation without changing signer identity.
+
+The APK contains the complete Android application, but it does **not** contain copyrighted Ocarina of Time game data and cannot play the game by itself. On first launch:
+
+1. Grant the app-specific file-access permission requested by Android.
+2. Let the app prepare its files under the device's `SOH` folder.
+3. Select a supported, legally obtained Ocarina of Time ROM when prompted. Android accepts a raw `.z64` or a `.zip`/`.7z` archive directly. For an archive, the app scans every `.z64` entry and imports only when exactly one matches the official supported hash list. The app processes the verified ROM locally into the required game archive. Alternatively, provide an already generated compatible `oot.o2r` or `oot-mq.o2r` in the `SOH` folder.
+
+The ROM, generated game archive, and saves remain user-owned content and are not included in this repository or its releases.
+
+## Android dual-screen build
+
+The Android app targets `arm64-v8a` with package `com.dishii.soh`. From the `Android` directory, run:
+
+```powershell
+.\gradlew.bat :app:testReleaseUnitTest :app:assembleRelease
+```
+
+The APK produced directly by Gradle is intentionally unsigned. If you build from source, sign it with your own persistent Android identity; a self-signed build cannot update over the downloadable release unless it uses the same private identity. Release APKs are signed separately with the repository's persistent release identity. The private signing key, ROMs, generated game OTR/O2R files, saves, and other copyrighted game payloads are never published.
+
+Dual-screen routing is enabled by default on supported Android devices. On the AYN Thor, gameplay and menus remain on the upper display while the gameplay HUD and touch-controller overlay use the lower display. The eye button hides the controller layer for physical-controller play without disabling the lower HUD. If no suitable secondary presentation display exists, both the normal HUD and touch controller safely return to the primary display.
+
+### Traditional controller layout
+
+This port adds an optional **modifier + left stick** C-button layer under **Settings > Controls > Modifier Buttons**. Enable it and select M1 or M2; while that modifier is held, the left stick presses C-Left, C-Right, C-Up, or C-Down instead of moving Link. The feature uses dominant-axis selection plus hysteresis, so diagonal input produces one stable C-button rather than two flickering inputs.
+
+The included `scripts/android/Set-TraditionalControllerLayout.ps1` applies this Xbox-style profile to an existing `shipofharkinian.json` while preserving keyboard mappings and unrelated settings:
+
+| Physical input | Shipwright action |
+| --- | --- |
+| Left stick | Analog movement |
+| Right stick | Camera and aiming |
+| L1 + left stick | Four C-buttons |
+| L2 | Z |
+| R1 | R |
+| View / Back | L |
+| A / B | N64 A / B |
+| Start | Start |
+| D-pad | N64 D-pad |
+
+With Shipwright closed, run:
+
+```powershell
+.\scripts\android\Set-TraditionalControllerLayout.ps1 -Path 'C:\path\to\shipofharkinian.json'
+```
+
+The updater validates the rewritten JSON and replaces the original atomically without creating a backup file.
+
+Android release identity is defined once in `Android/version.properties`. The APK version name, GitHub tag, and APK filename use the same numeric four-component form, such as `9.3.0.1`; descriptive **Dual Screen** wording belongs only in the release title. Both the APK verifier and build reject mismatched version metadata so every published revision remains a real Android update.
+
+The preserved feature contract from the official, Waterdish Android, and Chilhaps dual-screen sources is recorded in [Android feature parity](docs/android/FEATURE_PARITY.md).
+
+## Upstream project information
+
+The remainder of this README comes from the official Shipwright project and describes its game requirements and general usage.
+
 ![Ship of Harkinian](docs/shiptitle.darkmode.png#gh-dark-mode-only)
 ![Ship of Harkinian](docs/shiptitle.lightmode.png#gh-light-mode-only)
 

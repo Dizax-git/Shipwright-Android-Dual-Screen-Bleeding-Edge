@@ -1,0 +1,49 @@
+name: Android tests and release candidate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: windows-2022
+    steps:
+      - name: Check out source and Android submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install pinned Android build packages
+        shell: pwsh
+        run: |
+          sdkmanager 'platforms;android-31' 'build-tools;35.0.0' 'ndk;26.0.10792818' 'cmake;3.31.5'
+
+      - name: Build and test the unsigned Android candidate
+        shell: pwsh
+        run: |
+          ./scripts/android/Build-WindowsAndroidRelease.ps1 `
+            -RepositoryRoot $env:GITHUB_WORKSPACE `
+            -WorkingRoot (Join-Path $env:RUNNER_TEMP 'w') `
+            -OutputDirectory (Join-Path $env:GITHUB_WORKSPACE 'windows-native-output')
+
+      - name: Upload unsigned release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: shipwright-android-unsigned-${{ github.sha }}
+          path: windows-native-output/*.apk
+          if-no-files-found: error
+          retention-days: 7

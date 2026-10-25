@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "soh/Enhancements/gameconsole.h"
+#include "soh/Enhancements/DualScreenHUD/DualScreenHUD.h"
 #include "soh/frame_interpolation.h"
 #include <overlays/actors/ovl_En_Niw/z_en_niw.h>
 #include <overlays/misc/ovl_kaleido_scope/z_kaleido_scope.h>
@@ -1290,7 +1291,11 @@ void Play_DrawOverlayElements(PlayState* play) {
     }
 
     if (gSaveContext.gameMode == GAMEMODE_NORMAL) {
+        const bool dualScreenHudActive = DualScreenHUD_BeginHudPass();
         Interface_Draw(play);
+        if (dualScreenHudActive) {
+            DualScreenHUD_EndHudPass();
+        }
     }
 
     Message_Draw(play);

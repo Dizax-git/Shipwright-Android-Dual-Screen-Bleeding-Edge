@@ -12,6 +12,8 @@
 #include "soh/SohGui/SohGui.hpp"
 #include "soh/SohGui/UIWidgets.hpp"
 
+#include <sstream>
+
 extern "C" {
 #include "variables.h"
 }
