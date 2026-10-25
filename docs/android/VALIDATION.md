@@ -223,6 +223,7 @@ Validated on 2026-08-28 from implementation commit `a1b69c4164bedf955a33ffc86fde
 | Device actions | none; no ADB, installation, launch, or device control was performed |
 | Publication | Public release `9.2.3.5`; normal, non-draft, non-prerelease release with exactly one APK and its matching checksum sidecar |
 | Independent download | Downloaded through the GitHub release API into a separate `D:\Temp` directory; sidecar, package, numeric version, ABI, 16 KiB alignment, signer, signature, payload, and SHA-256 checks all passed |
+
 # Stable 9.3.1 / Android 9.3.1.1 — 2026-10-25
 
 - Exact official base: `f0599f96f8d442f26d0fa1c5cedafddacd56633f` (`9.3.1`). The compiled application snapshot is `da0e940467d822a86a4596656fa444f6dc8e1d85`; later source changes only align hosted-CI NDK provisioning and record validation.
@@ -232,4 +233,3 @@ Validated on 2026-08-28 from implementation commit `a1b69c4164bedf955a33ffc86fde
 - Signer SHA-256: `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004`.
 - APK SHA-256: `8a152e40507c588b0fb28b9590ddba3e8151e6613c259fec08062d5b8254c222`.
 - Device/gameplay validation was not performed in this scheduled run. No ADB, installation, ROM, save or device-settings action was taken.
-
