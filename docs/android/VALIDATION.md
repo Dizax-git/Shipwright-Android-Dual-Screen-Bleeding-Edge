@@ -223,3 +223,13 @@ Validated on 2026-08-28 from implementation commit `a1b69c4164bedf955a33ffc86fde
 | Device actions | none; no ADB, installation, launch, or device control was performed |
 | Publication | Public release `9.2.3.5`; normal, non-draft, non-prerelease release with exactly one APK and its matching checksum sidecar |
 | Independent download | Downloaded through the GitHub release API into a separate `D:\Temp` directory; sidecar, package, numeric version, ABI, 16 KiB alignment, signer, signature, payload, and SHA-256 checks all passed |
+# Stable 9.3.1 / Android 9.3.1.1 — 2026-10-25
+
+- Exact official base: `f0599f96f8d442f26d0fa1c5cedafddacd56633f` (`9.3.1`). The compiled application snapshot is `da0e940467d822a86a4596656fa444f6dc8e1d85`; later source changes only align hosted-CI NDK provisioning and record validation.
+- Full Windows-native asset generation, arm64 release build, Android unit tests and Android source/parity contracts passed. The generated project archive matches the official 9.3.1 Windows release entry contents, except CRLF/LF in the two non-Android shaders.
+- The shared Gradle gate verified two workers, no parallel projects, a 3 GiB heap, one test fork, successful command exit and daemon exit. Independent Ninja inspection verified compile-pool depth 2 and link-pool depth 1 for every native compile/link edge. No memory failure was reported. Optional desktop notification/support-monitor warnings did not interrupt supervision; the original build was directly observed through completion.
+- Persistently normalized candidate: package `com.dishii.soh`, version `9.3.1.1`, versionCode `903001001`, exactly `arm64-v8a`. ZIP and every native ELF LOAD segment passed 16 KiB alignment. Signature integrity, pinned signer, runtime-library dependency closure and forbidden-payload checks passed.
+- Signer SHA-256: `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004`.
+- APK SHA-256: `8a152e40507c588b0fb28b9590ddba3e8151e6613c259fec08062d5b8254c222`.
+- Device/gameplay validation was not performed in this scheduled run. No ADB, installation, ROM, save or device-settings action was taken.
+
