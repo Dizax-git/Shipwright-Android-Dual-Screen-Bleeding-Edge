@@ -25,6 +25,10 @@ Describe 'Android continuous-integration parity contract' {
         $workflow | Should Match ([regex]::Escape("'ndk;$pin'"))
     }
 
+    It 'does not request the removed legacy Android tools package' {
+        $workflow | Should Match '(?s)uses: android-actions/setup-android@v3\s+with:\s+packages: platform-tools'
+    }
+
     It 'uses the tested Windows-native builder through a short isolated clone' {
         $workflow | Should Match 'Build-WindowsAndroidRelease\.ps1'
         $workflow | Should Match "Join-Path \`$env:RUNNER_TEMP 'w'"
