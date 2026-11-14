@@ -44,6 +44,14 @@ jobs:
             -WorkingRoot (Join-Path $env:RUNNER_TEMP 'w') `
             -OutputDirectory (Join-Path $env:GITHUB_WORKSPACE 'windows-native-output')
 
+      - name: Upload unsigned release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: shipwright-android-unsigned-${{ github.sha }}
+          path: windows-native-output/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Sign the release candidate with the personal Thor key
         if: ${{ env.HAS_THOR_KEY == 'true' }}
         shell: pwsh
@@ -51,8 +59,12 @@ jobs:
           THOR_KEYSTORE_B64: ${{ secrets.THOR_KEYSTORE_B64 }}
           THOR_KEYSTORE_PASS: ${{ secrets.THOR_KEYSTORE_PASS }}
         run: |
+          # Secrets pasted from a text editor can carry a BOM, spaces or a trailing newline.
+          $env:THOR_KEYSTORE_PASS = ($env:THOR_KEYSTORE_PASS -replace '[^\x21-\x7E]', '')
+          $keystoreB64 = ($env:THOR_KEYSTORE_B64 -replace '[^A-Za-z0-9+/=]', '')
+          Write-Host "Password length after cleanup: $($env:THOR_KEYSTORE_PASS.Length) (expected 24); keystore base64 length: $($keystoreB64.Length) (expected 3472)"
           $keystore = Join-Path $env:RUNNER_TEMP 'thor-soh.jks'
-          [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:THOR_KEYSTORE_B64))
+          [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($keystoreB64))
           $buildTools = Join-Path $env:ANDROID_SDK_ROOT 'build-tools\35.0.0'
           $apk = Get-ChildItem -LiteralPath 'windows-native-output' -Filter '*.apk' | Select-Object -First 1
           $signed = Join-Path 'windows-native-output' ('thor-signed-' + $apk.Name)
@@ -63,10 +75,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'apksigner verify failed' }
           Remove-Item -LiteralPath $keystore -Force
 
-      - name: Upload unsigned release candidate
+      - name: Upload signed APK
+        if: ${{ env.HAS_THOR_KEY == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: shipwright-android-unsigned-${{ github.sha }}
-          path: windows-native-output/*.apk
+          name: thor-signed-${{ github.sha }}
+          path: windows-native-output/thor-signed-*.apk
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
