@@ -47,6 +47,12 @@ public final class DualScreenHudPresentation extends Presentation {
         FrameLayout root = new FrameLayout(getContext());
         SurfaceView surfaceView = new SurfaceView(getContext());
         surfaceView.getHolder().addCallback(surfaceCallback);
+        // Forward touches to the native bottom-screen trackers. The controller overlay sits on top
+        // and only lets touches through when it is hidden with its eye button.
+        surfaceView.setOnTouchListener((view, event) -> {
+            activity.nativeSecondaryTouch(event.getActionMasked(), event.getX(), event.getY());
+            return true;
+        });
         root.addView(surfaceView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(root, new ViewGroup.LayoutParams(

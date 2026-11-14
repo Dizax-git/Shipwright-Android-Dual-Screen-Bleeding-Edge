@@ -49,6 +49,13 @@ static std::map<int32_t, const char*> bunnyHoodEffectMap = {
     { BUNNY_HOOD_FAST_AND_JUMP, "Faster + Longer Jump" },
 };
 
+#if defined(__ANDROID__)
+static const std::map<int32_t, const char*> dualScreenBottomOptions = {
+    { 0, "Gameplay HUD" },
+    { 1, "Item & Hint Trackers" },
+};
+#endif
+
 static const std::map<int32_t, const char*> dekuStickCheat = {
     { DEKU_STICK_NORMAL, "Normal" },
     { DEKU_STICK_UNBREAKABLE, "Unbreakable" },
@@ -744,6 +751,20 @@ void SohMenu::AddMenuEnhancements() {
         .CVar(CVAR_ENHANCEMENT("DualScreenHUD"))
         .Options(CheckboxOptions().DefaultValue(true).Tooltip(
             "Moves the gameplay HUD to an eligible secondary display. Does nothing when no secondary display is available."));
+    AddWidget(path, "Bottom Screen Shows", WIDGET_CVAR_COMBOBOX)
+        .CVar(CVAR_ENHANCEMENT("DualScreenBottom"))
+        .PreFunc([](WidgetInfo& info) { info.options->disabled = !CVarGetInteger(CVAR_ENHANCEMENT("DualScreenHUD"), 1); })
+        .Options(ComboboxOptions()
+                     .ComboMap(dualScreenBottomOptions)
+                     .DefaultIndex(1)
+                     .Tooltip("Gameplay HUD: hearts, rupees and buttons on the secondary display.\n"
+                              "Item & Hint Trackers: the randomizer Item Tracker and Hint Tracker on the "
+                              "secondary display (touch to switch tabs, drag to scroll); the HUD stays on the "
+                              "main screen."));
+    AddWidget(path, "Bottom Screen Tracker Scale: %.1fx", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_ENHANCEMENT("DualScreenTrackerScale"))
+        .Options(FloatSliderOptions().Min(1.0f).Max(3.0f).DefaultValue(1.6f).Format("%.1fx").Tooltip(
+            "Size of the trackers on the secondary display."));
 #endif
     AddWidget(path, "Minimal UI", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("MinimalUI"))

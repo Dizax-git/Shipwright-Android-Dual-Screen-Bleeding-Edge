@@ -48,6 +48,8 @@ static std::set<RandomizerHint> readHints;
 static int sectionId = -1;
 static RandomizerCheckArea currentArea = RCAREA_INVALID;
 static bool doAreaScroll = false;
+// True while the hint list is drawn on the dual-screen bottom display.
+static bool sEmbeddedDraw = false;
 
 // Formatted hint text is cached per hint; invalidated on file load/init and
 // when the game language changes. Only touched from the draw thread.
@@ -386,7 +388,8 @@ static void DrawHintList() {
     Color_Found = CVarGetColor(CVAR_TRACKER_HINT("FoundColor.Value"), Color_Found_Default);
 
     bool showExpandCollapse = CVarGetInteger(CVAR_TRACKER_HINT("ExpandCollapseButtonsVisible"), 1);
-    bool showSearch = CVarGetInteger(CVAR_TRACKER_HINT("SearchInputVisible"), 1);
+    // No on-screen keyboard on the bottom screen: hide the search box there.
+    bool showSearch = !sEmbeddedDraw && CVarGetInteger(CVAR_TRACKER_HINT("SearchInputVisible"), 1);
     bool showTotals = CVarGetInteger(CVAR_TRACKER_HINT("HintTotalsVisible"), 1);
 
     if (showExpandCollapse) {
@@ -679,6 +682,21 @@ void HintTrackerWindow::DrawElement() {
         }
     }
     Trackers::EndFloatWindows();
+}
+
+// Dual-screen tracker (bottom screen): draws the hint list inside the current ImGui window.
+void DrawEmbedded() {
+    if (!GameInteractor::IsSaveLoaded()) {
+        ImGui::TextUnformatted(waitingMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
+        return;
+    }
+    if (!IS_RANDO) {
+        ImGui::TextWrapped("%s", randoOnlyMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
+        return;
+    }
+    sEmbeddedDraw = true;
+    DrawHintList();
+    sEmbeddedDraw = false;
 }
 
 void HintTrackerWindow::InitElement() {

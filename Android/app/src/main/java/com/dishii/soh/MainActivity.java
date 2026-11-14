@@ -579,6 +579,8 @@ public class MainActivity extends SDLActivity{
     public native void nativeMenuNavKey(int dir, boolean pressed);
     public native void nativeSecondaryDisplaySurfaceChanged(Surface surface, int width, int height);
     public native void nativeSecondaryDisplaySurfaceDestroyed();
+    // Touch on the secondary display (bottom screen trackers). action = MotionEvent.getActionMasked().
+    public native void nativeSecondaryTouch(int action, float x, float y);
 
     public void SetFirstPersonAimingActive(boolean active) {
         mIsAiming = active;

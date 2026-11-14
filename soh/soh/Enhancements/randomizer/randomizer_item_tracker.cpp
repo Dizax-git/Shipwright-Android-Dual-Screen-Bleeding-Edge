@@ -2416,3 +2416,53 @@ void RegisterItemTracker() {
 
 static RegisterShipInitFunc registerItemTracker(RegisterItemTracker);
 static RegisterMenuInitFunc menuInitFunc(RegisterItemTrackerWidgets);
+
+// ---------------------------------------------------------------------------
+// Dual-screen tracker (bottom screen): draws the tracker sections inside the
+// current ImGui window instead of the floating tracker windows.
+// ---------------------------------------------------------------------------
+static void DrawEmbeddedGrid(const char* id, const std::vector<ItemTrackerItem>& items, int columns) {
+    if (items.empty()) {
+        return;
+    }
+    const float iconSize = static_cast<float>(CVarGetInteger(CVAR_TRACKER_ITEM("IconSize"), 36));
+    const float iconSpacing = static_cast<float>(CVarGetInteger(CVAR_TRACKER_ITEM("IconSpacing"), 12));
+    const size_t rows = (items.size() + columns - 1) / columns;
+    const ImVec2 size(columns * (iconSize + iconSpacing) + 8.0f, rows * (iconSize + iconSpacing) + 8.0f);
+    ImGui::BeginChild(id, size, ImGuiChildFlags_None,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                          ImGuiWindowFlags_NoBackground);
+    for (size_t i = 0; i < items.size(); i++) {
+        const size_t row = i / columns;
+        const size_t column = i % columns;
+        ImGui::SetCursorPos(ImVec2(column * (iconSize + iconSpacing) + 4.0f, row * (iconSize + iconSpacing) + 4.0f));
+        items[i].drawFunc(items[i]);
+    }
+    ImGui::EndChild();
+}
+
+void ItemTracker_DrawEmbedded() {
+    UpdateVectors();
+    ImGui::PushFont(OTRGlobals::Instance->fontMono);
+
+    ImGui::BeginGroup();
+    DrawEmbeddedGrid("##dsInventory", inventoryItems, 6);
+    DrawEmbeddedGrid("##dsEquipment", equipmentItems, 6);
+    DrawEmbeddedGrid("##dsMisc", miscItems, 6);
+    ImGui::EndGroup();
+
+    ImGui::SameLine(0.0f, 16.0f);
+
+    ImGui::BeginGroup();
+    DrawEmbeddedGrid("##dsStones", dungeonRewardStones, 6);
+    DrawEmbeddedGrid("##dsMedallions", dungeonRewardMedallions, 6);
+    DrawEmbeddedGrid("##dsSongs", songItems, 6);
+    std::vector<ItemTrackerItem> compactDungeonItems =
+        CVarGetInteger(CVAR_TRACKER_ITEM("DungeonItems.DisplayMaps"), 1)
+            ? GetDungeonItemsVector(itemTrackerDungeonsWithMapsCompact)
+            : GetDungeonItemsVector(itemTrackerDungeonsCompact);
+    DrawEmbeddedGrid("##dsDungeonItems", compactDungeonItems, 6);
+    ImGui::EndGroup();
+
+    ImGui::PopFont();
+}

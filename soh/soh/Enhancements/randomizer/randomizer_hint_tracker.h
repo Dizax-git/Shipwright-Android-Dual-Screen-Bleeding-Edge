@@ -11,6 +11,9 @@ typedef enum {
 
 namespace HintTracker {
 
+// Draws the hint list inside the current ImGui window (dual-screen bottom display).
+void DrawEmbedded();
+
 class HintTrackerSettingsWindow final : public Ship::GuiWindow {
   public:
     using GuiWindow::GuiWindow;

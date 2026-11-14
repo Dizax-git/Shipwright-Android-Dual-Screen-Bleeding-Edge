@@ -1,4 +1,5 @@
 #include "DualScreenHUD.h"
+#include "DualScreenTracker.h"
 
 #include "fast/Fast3dWindow.h"
 #include "fast/backends/gfx_rendering_api.h"
@@ -267,7 +268,7 @@ bool CreateSecondarySurfaceLocked(const PrimaryBindings& primary) {
     }
 
     const EGLint configAttributes[] = {
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_RENDERABLE_TYPE, 0x40 /* EGL_OPENGL_ES3_BIT_KHR */,
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_RED_SIZE, 8,
         EGL_GREEN_SIZE, 8,
@@ -293,7 +294,7 @@ bool CreateSecondarySurfaceLocked(const PrimaryBindings& primary) {
         return false;
     }
 
-    const EGLint contextAttributes[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+    const EGLint contextAttributes[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE };
     EGLContext context = eglCreateContext(primary.display, config, primary.context, contextAttributes);
     if (context == EGL_NO_CONTEXT) {
         DUAL_LOG_ERROR("eglCreateContext failed: 0x%x", eglGetError());
@@ -406,7 +407,7 @@ void RejectCurrentSurfaceLocked(const PrimaryBindings& primary, const char* reas
 bool DualScreenHUD_IsActive(void) {
     std::lock_guard<std::mutex> lock(sSecondary.mutex);
     return sSecondary.surface != EGL_NO_SURFACE &&
-           CVarGetInteger(CVAR_ENHANCEMENT("DualScreenHUD"), 1) != 0;
+           CVarGetInteger(CVAR_ENHANCEMENT("DualScreenHUD"), 1) != 0 && !DualScreenTracker_IsEnabled();
 }
 
 void DualScreenHUD_PresentFrame(void) {
@@ -437,6 +438,31 @@ void DualScreenHUD_PresentFrame(void) {
             RejectCurrentSurfaceLocked(primary, "EGL initialization failure");
             return;
         }
+    }
+
+    if (sSecondary.surface != EGL_NO_SURFACE && DualScreenTracker_IsEnabled()) {
+        if (eglMakeCurrent(sSecondary.display, sSecondary.surface, sSecondary.surface, sSecondary.context) !=
+            EGL_TRUE) {
+            RejectCurrentSurfaceLocked(primary, "eglMakeCurrent failure");
+            return;
+        }
+        EGLint trackerWidth = 0;
+        EGLint trackerHeight = 0;
+        eglQuerySurface(sSecondary.display, sSecondary.surface, EGL_WIDTH, &trackerWidth);
+        eglQuerySurface(sSecondary.display, sSecondary.surface, EGL_HEIGHT, &trackerHeight);
+        const bool drawn = DualScreenTracker_Render(trackerWidth, trackerHeight);
+        const EGLBoolean trackerSwap =
+            drawn ? eglSwapBuffers(sSecondary.display, sSecondary.surface) : static_cast<EGLBoolean>(EGL_TRUE);
+        if (!RestorePrimaryContext(primary) || trackerSwap != EGL_TRUE) {
+            DUAL_LOG_ERROR("Secondary tracker presentation failed (swap=%d egl=0x%x)", trackerSwap, eglGetError());
+            DestroyEglResourcesLocked();
+            if (sSecondary.window != nullptr) {
+                ANativeWindow_release(sSecondary.window);
+                sSecondary.window = nullptr;
+            }
+            sSecondary.surfaceRejected = true;
+        }
+        return;
     }
 
     if (sSecondary.surface == EGL_NO_SURFACE || sHudFramebufferId < 0) {
