@@ -2441,17 +2441,29 @@ static void DrawEmbeddedGrid(const char* id, const std::vector<ItemTrackerItem>&
     ImGui::EndChild();
 }
 
+// Pause-menu style frame (dark panel, thin golden border) behind the last drawn group.
+static void DrawEmbeddedPanelFrame() {
+    const ImVec2 min = ImGui::GetItemRectMin();
+    const ImVec2 max = ImGui::GetItemRectMax();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    drawList->AddRect(ImVec2(min.x - 4.0f, min.y - 4.0f), ImVec2(max.x + 4.0f, max.y + 4.0f),
+                      IM_COL32(200, 170, 90, 140), 6.0f, 0, 1.5f);
+}
+
 void ItemTracker_DrawEmbedded() {
     UpdateVectors();
     ImGui::PushFont(OTRGlobals::Instance->fontMono);
 
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 4.0f);
     ImGui::BeginGroup();
     DrawEmbeddedGrid("##dsInventory", inventoryItems, 6);
     DrawEmbeddedGrid("##dsEquipment", equipmentItems, 6);
     DrawEmbeddedGrid("##dsMisc", miscItems, 6);
     ImGui::EndGroup();
+    DrawEmbeddedPanelFrame();
 
-    ImGui::SameLine(0.0f, 16.0f);
+    ImGui::SameLine(0.0f, 20.0f);
 
     ImGui::BeginGroup();
     DrawEmbeddedGrid("##dsStones", dungeonRewardStones, 6);
@@ -2463,6 +2475,7 @@ void ItemTracker_DrawEmbedded() {
             : GetDungeonItemsVector(itemTrackerDungeonsCompact);
     DrawEmbeddedGrid("##dsDungeonItems", compactDungeonItems, 6);
     ImGui::EndGroup();
+    DrawEmbeddedPanelFrame();
 
     ImGui::PopFont();
 }

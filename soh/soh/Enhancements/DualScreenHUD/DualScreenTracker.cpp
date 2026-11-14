@@ -270,10 +270,12 @@ void DrawTabButton(const char* label, TrackerTab tab, float width, float height)
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
     DrawTextbox(drawList, min, max, selected ? IM_COL32(20, 20, 60, 235) : IM_COL32(0, 0, 0, 190));
+    ImGui::PushFont(OTRGlobals::Instance->fontStandardLarger);
     const ImVec2 textSize = ImGui::CalcTextSize(label);
     const ImVec2 textPos(min.x + (width - textSize.x) * 0.5f, min.y + (height - textSize.y) * 0.5f);
     drawList->AddText(ImVec2(textPos.x + 1.0f, textPos.y + 1.0f), IM_COL32(0, 0, 0, 200), label);
     drawList->AddText(textPos, selected ? IM_COL32(255, 255, 120, 255) : IM_COL32(200, 200, 200, 255), label);
+    ImGui::PopFont();
     if (selected) {
         DrawPauseCursor(drawList, min, max);
     }
