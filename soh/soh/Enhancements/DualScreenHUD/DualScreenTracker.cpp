@@ -21,8 +21,9 @@
 #include <vector>
 
 extern "C" {
-#include "macros.h"
+#include <z64.h>
 #include "variables.h"
+#include "macros.h"
 }
 
 // Defined in randomizer_item_tracker.cpp / randomizer_hint_tracker.cpp.
