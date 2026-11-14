@@ -441,6 +441,7 @@ void DualScreenHUD_PresentFrame(void) {
     }
 
     if (sSecondary.surface != EGL_NO_SURFACE && DualScreenTracker_IsEnabled()) {
+        DualScreenTracker_PrepareResources();
         if (eglMakeCurrent(sSecondary.display, sSecondary.surface, sSecondary.surface, sSecondary.context) !=
             EGL_TRUE) {
             RejectCurrentSurfaceLocked(primary, "eglMakeCurrent failure");

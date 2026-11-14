@@ -20,6 +20,10 @@ bool DualScreenTracker_IsEnabled(void);
 // context current and the primary ImGui frame finished. Returns false when
 // nothing could be drawn.
 bool DualScreenTracker_Render(int surfaceWidth, int surfaceHeight);
+
+// Loads the game textures used by the tracker screen. Must be called with the
+// primary GL context current (before switching to the secondary surface).
+void DualScreenTracker_PrepareResources();
 #endif
 
 #endif
