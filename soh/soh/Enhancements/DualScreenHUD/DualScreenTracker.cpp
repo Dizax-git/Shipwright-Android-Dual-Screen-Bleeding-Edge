@@ -2,6 +2,9 @@
 
 #include "libultraship/bridge/consolevariablebridge.h"
 #include "soh/cvar_prefixes.h"
+#include "soh/Enhancements/game-interactor/GameInteractor.h"
+#include "soh/Enhancements/gameplaystats.h"
+#include "soh/ShipUtils.h"
 
 #include <imgui.h>
 #include <ship/Context.h>
@@ -14,7 +17,13 @@
 #include <cmath>
 #include <cstring>
 #include <mutex>
+#include <string>
 #include <vector>
+
+extern "C" {
+#include "macros.h"
+#include "variables.h"
+}
 
 // Defined in randomizer_item_tracker.cpp / randomizer_hint_tracker.cpp.
 void ItemTracker_DrawEmbedded();
@@ -217,6 +226,24 @@ void DrawTrackerUi() {
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus |
                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+    // Status line: run timer (same as the Gameplay Stats total time) and in-game clock.
+    if (GameInteractor::IsSaveLoaded()) {
+        const std::string runTime = Ship_FormatTimeDisplay(static_cast<uint32_t>(GAMEPLAYSTAT_TOTAL_TIME));
+        const uint32_t daySeconds =
+            static_cast<uint32_t>(static_cast<double>(gSaveContext.dayTime) * (24 * 60 * 60 - 1) / 65535);
+        const bool isNight = gSaveContext.nightFlag != 0;
+        ImGui::Text("%s %s", Label("Run", "Lauf", "Run"), runTime.c_str());
+        ImGui::SameLine();
+        const std::string clock = std::string(Label("Time", "Zeit", "Heure")) + " " +
+                                  std::to_string(daySeconds / 3600 / 10) + std::to_string(daySeconds / 3600 % 10) +
+                                  ":" + std::to_string(daySeconds % 3600 / 60 / 10) +
+                                  std::to_string(daySeconds % 3600 / 60 % 10) + " (" +
+                                  (isNight ? Label("night", "Nacht", "nuit") : Label("day", "Tag", "jour")) + ")";
+        ImGui::SetCursorPosX(ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(clock.c_str()).x);
+        ImGui::TextColored(isNight ? ImVec4(0.6f, 0.7f, 1.0f, 1.0f) : ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "%s",
+                           clock.c_str());
+    }
 
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
     const float tabWidth = (ImGui::GetContentRegionAvail().x - spacing) * 0.5f;
