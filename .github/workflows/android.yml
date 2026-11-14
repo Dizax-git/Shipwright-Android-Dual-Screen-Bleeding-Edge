@@ -2,7 +2,7 @@ name: Android tests and release candidate
 
 on:
   push:
-    branches: [main]
+    branches: [main, thor-trackers]
   pull_request:
   workflow_dispatch:
 
@@ -12,6 +12,8 @@ permissions:
 jobs:
   test-and-build:
     runs-on: windows-2022
+    env:
+      HAS_THOR_KEY: ${{ secrets.THOR_KEYSTORE_B64 != '' }}
     steps:
       - name: Check out source and Android submodules
         uses: actions/checkout@v4
@@ -41,6 +43,25 @@ jobs:
             -RepositoryRoot $env:GITHUB_WORKSPACE `
             -WorkingRoot (Join-Path $env:RUNNER_TEMP 'w') `
             -OutputDirectory (Join-Path $env:GITHUB_WORKSPACE 'windows-native-output')
+
+      - name: Sign the release candidate with the personal Thor key
+        if: ${{ env.HAS_THOR_KEY == 'true' }}
+        shell: pwsh
+        env:
+          THOR_KEYSTORE_B64: ${{ secrets.THOR_KEYSTORE_B64 }}
+          THOR_KEYSTORE_PASS: ${{ secrets.THOR_KEYSTORE_PASS }}
+        run: |
+          $keystore = Join-Path $env:RUNNER_TEMP 'thor-soh.jks'
+          [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:THOR_KEYSTORE_B64))
+          $buildTools = Join-Path $env:ANDROID_SDK_ROOT 'build-tools\35.0.0'
+          $apk = Get-ChildItem -LiteralPath 'windows-native-output' -Filter '*.apk' | Select-Object -First 1
+          $signed = Join-Path 'windows-native-output' ('thor-signed-' + $apk.Name)
+          & (Join-Path $buildTools 'apksigner.bat') sign --ks $keystore --ks-key-alias thorsoh `
+            --ks-pass env:THOR_KEYSTORE_PASS --key-pass env:THOR_KEYSTORE_PASS --out $signed $apk.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'apksigner sign failed' }
+          & (Join-Path $buildTools 'apksigner.bat') verify --verbose $signed
+          if ($LASTEXITCODE -ne 0) { throw 'apksigner verify failed' }
+          Remove-Item -LiteralPath $keystore -Force
 
       - name: Upload unsigned release candidate
         uses: actions/upload-artifact@v4
