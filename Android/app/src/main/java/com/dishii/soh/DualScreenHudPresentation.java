@@ -7,6 +7,7 @@ import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 
 /** Hosts the native HUD surface on a presentation-capable secondary display. */
@@ -42,6 +43,11 @@ public final class DualScreenHudPresentation extends Presentation {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Never take input focus: touching the bottom screen must not steal the gamepad/B button
+        // from the game (B would otherwise act as Back and close this presentation) nor make the
+        // system bars reappear on the main screen. Touch events are still delivered.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+        setCancelable(false);
         ImmersiveMode.apply(getWindow());
 
         FrameLayout root = new FrameLayout(getContext());
@@ -81,6 +87,11 @@ public final class DualScreenHudPresentation extends Presentation {
 
         surfaceActive = false;
         activity.nativeSecondaryDisplaySurfaceDestroyed();
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Back/B must never close the bottom screen.
     }
 
     @Override
