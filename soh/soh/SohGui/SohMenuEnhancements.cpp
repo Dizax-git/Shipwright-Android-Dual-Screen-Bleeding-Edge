@@ -758,7 +758,7 @@ void SohMenu::AddMenuEnhancements() {
                      .ComboMap(dualScreenBottomOptions)
                      .DefaultIndex(1)
                      .Tooltip("Gameplay HUD: hearts, rupees and buttons on the secondary display.\n"
-                              "Item & Hint Trackers: the randomizer Item Tracker and Hint Tracker on the "
+                              "Item & Hint Trackers: the randomizer Item Tracker, Hint Tracker and Check Tracker on the "
                               "secondary display (touch to switch tabs, drag to scroll); the HUD stays on the "
                               "main screen."));
     AddWidget(path, "Bottom Screen Tracker Scale: %.1fx", WIDGET_CVAR_SLIDER_FLOAT)
@@ -770,6 +770,15 @@ void SohMenu::AddMenuEnhancements() {
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Also show dungeon maps and compasses in the bottom-screen item tracker "
             "(keys are always shown)."));
+    AddWidget(path, "Bottom Screen: Show Reachable Checks", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("DualScreenChecksLogic"))
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Checks tab: uses the randomizer logic to tell which checks you can do now with your items "
+            "(blue arrow) and which are still locked (padlock). Newly reachable checks are marked NEW."));
+    AddWidget(path, "Bottom Screen: Follow Current Area", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("DualScreenChecksFollow"))
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Checks tab: opens the list of the area you just entered."));
 #endif
     AddWidget(path, "Minimal UI", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("MinimalUI"))

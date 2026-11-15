@@ -1236,6 +1236,39 @@ void SetAreaSpoiled(RandomizerCheckArea rcArea) {
 
 void InternalRecalculateAvailableChecks(RandomizerRegion startingRegion, RandoAgeTime startingAgeTime);
 
+// Bottom-screen check tab wants availability on, even with the window closed.
+static bool BottomScreenWantsLogic() {
+#if defined(__ANDROID__)
+    return CVarGetInteger(CVAR_ENHANCEMENT("DualScreenHUD"), 1) != 0 &&
+           CVarGetInteger(CVAR_ENHANCEMENT("DualScreenBottom"), 1) == 1 &&
+           CVarGetInteger(CVAR_ENHANCEMENT("DualScreenChecksLogic"), 1) != 0;
+#else
+    return false;
+#endif
+}
+
+static void RefreshDisplaySettings() {
+    hideUnchecked = CVarGetInteger(CVAR_TRACKER_CHECK("Unchecked.Hide"), 0);
+    hideScummed = CVarGetInteger(CVAR_TRACKER_CHECK("Scummed.Hide"), 0);
+    hideSeen = CVarGetInteger(CVAR_TRACKER_CHECK("Seen.Hide"), 0);
+    hideSkipped = CVarGetInteger(CVAR_TRACKER_CHECK("Skipped.Hide"), 0);
+    hideSaved = CVarGetInteger(CVAR_TRACKER_CHECK("Saved.Hide"), 0);
+    hideCollected = CVarGetInteger(CVAR_TRACKER_CHECK("Collected.Hide"), 0);
+    showHidden = CVarGetInteger(CVAR_TRACKER_CHECK("ShowHidden"), 0);
+    mystery = CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("MysteriousShuffle"), 0);
+    showLogicTooltip = CVarGetInteger(CVAR_TRACKER_CHECK("ShowLogic"), 0);
+    const bool wasEnabled = enableAvailableChecks;
+    enableAvailableChecks =
+        CVarGetInteger(CVAR_TRACKER_CHECK("EnableAvailableChecks"), 0) != 0 || BottomScreenWantsLogic();
+    if (enableAvailableChecks && !wasEnabled) {
+        recalculateAvailable = true;
+    }
+    onlyShowAvailable = CVarGetInteger(CVAR_TRACKER_CHECK("OnlyShowAvailable"), 0);
+
+    hideShopUnshuffledChecks = CVarGetInteger(CVAR_TRACKER_CHECK("HideUnshuffledShopChecks"), 0);
+    alwaysShowGS = CVarGetInteger(CVAR_TRACKER_CHECK("AlwaysShowGSLocs"), 0);
+}
+
 void CheckTrackerWindow::DrawElement() {
     Color_Background = CVarGetColor(CVAR_TRACKER_CHECK("BgColor.Value"), Color_Bg_Default);
     Color_Area_Incomplete_Main = CVarGetColor(CVAR_TRACKER_CHECK("AreaIncomplete.MainColor.Value"), Color_Main_Default);
@@ -1260,20 +1293,7 @@ void CheckTrackerWindow::DrawElement() {
     Color_Scummed_Extra = CVarGetColor(CVAR_TRACKER_CHECK("Scummed.ExtraColor.Value"), Color_Scummed_Extra_Default);
     Color_Saved_Main = CVarGetColor(CVAR_TRACKER_CHECK("Saved.MainColor.Value"), Color_Main_Default);
     Color_Saved_Extra = CVarGetColor(CVAR_TRACKER_CHECK("Saved.ExtraColor.Value"), Color_Saved_Extra_Default);
-    hideUnchecked = CVarGetInteger(CVAR_TRACKER_CHECK("Unchecked.Hide"), 0);
-    hideScummed = CVarGetInteger(CVAR_TRACKER_CHECK("Scummed.Hide"), 0);
-    hideSeen = CVarGetInteger(CVAR_TRACKER_CHECK("Seen.Hide"), 0);
-    hideSkipped = CVarGetInteger(CVAR_TRACKER_CHECK("Skipped.Hide"), 0);
-    hideSaved = CVarGetInteger(CVAR_TRACKER_CHECK("Saved.Hide"), 0);
-    hideCollected = CVarGetInteger(CVAR_TRACKER_CHECK("Collected.Hide"), 0);
-    showHidden = CVarGetInteger(CVAR_TRACKER_CHECK("ShowHidden"), 0);
-    mystery = CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("MysteriousShuffle"), 0);
-    showLogicTooltip = CVarGetInteger(CVAR_TRACKER_CHECK("ShowLogic"), 0);
-    enableAvailableChecks = CVarGetInteger(CVAR_TRACKER_CHECK("EnableAvailableChecks"), 0);
-    onlyShowAvailable = CVarGetInteger(CVAR_TRACKER_CHECK("OnlyShowAvailable"), 0);
-
-    hideShopUnshuffledChecks = CVarGetInteger(CVAR_TRACKER_CHECK("HideUnshuffledShopChecks"), 0);
-    alwaysShowGS = CVarGetInteger(CVAR_TRACKER_CHECK("AlwaysShowGSLocs"), 0);
+    RefreshDisplaySettings();
     if (CVarGetInteger(CVAR_TRACKER_CHECK("WindowType"), TRACKER_WINDOW_WINDOW) == TRACKER_WINDOW_FLOATING) {
         if (CVarGetInteger(CVAR_TRACKER_CHECK("ShowOnlyPaused"), 0) &&
             (gPlayState == nullptr || gPlayState->pauseCtx.state == 0)) {
@@ -2739,10 +2759,134 @@ void RegisterCheckTrackerWidgets() {
                      .Tooltip("If enabled, will show the checks that are available to be collected "
                               "with your current progress."))
         .Callback([&](WidgetInfo& info) {
-            enableAvailableChecks = CVarGetInteger(CVAR_TRACKER_CHECK("EnableAvailableChecks"), 0);
+            enableAvailableChecks =
+                CVarGetInteger(CVAR_TRACKER_CHECK("EnableAvailableChecks"), 0) != 0 || BottomScreenWantsLogic();
             RecalculateAvailableChecks();
         });
 }
 
 static RegisterMenuInitFunc menuInitFunc(RegisterCheckTrackerWidgets);
+
+// ---- Bottom-screen check tab (Thor build) ----
+
+bool EmbeddedBegin() {
+    if (!GameInteractor::IsSaveLoaded() || !initialized) {
+        return false;
+    }
+    RefreshDisplaySettings();
+    if (recalculateAvailable) {
+        recalculateAvailable = false;
+        InternalRecalculateAvailableChecks(availableChecksStartingRegion, availableChecksStartingAgeTime);
+        availableChecksStartingRegion = RR_ROOT;
+        availableChecksStartingAgeTime = RAT_NONE;
+    }
+    return true;
+}
+
+bool IsLogicShown() {
+    return enableAvailableChecks;
+}
+
+const std::vector<RandomizerCheck>& GetChecksForArea(RandomizerCheckArea area) {
+    static const std::vector<RandomizerCheck> empty;
+    auto it = checksByArea.find(area);
+    return it == checksByArea.end() ? empty : it->second;
+}
+
+RandomizerCheckArea GetCurrentTrackerArea() {
+    return currentArea;
+}
+
+RandomizerCheck GetLastCheckedLocation() {
+    return lastLocationChecked;
+}
+
+std::string GetCheckLabel(RandomizerCheck rc) {
+    auto it = checkNameOverrides.find(rc);
+    if (it != checkNameOverrides.end()) {
+        return it->second;
+    }
+    return Rando::StaticData::GetLocation(rc)->GetShortName();
+}
+
+// Same rules as the extra text of DrawLocation (what the player already knows).
+std::string GetCheckItemText(RandomizerCheck rc) {
+    Rando::Location* loc = Rando::StaticData::GetLocation(rc);
+    Rando::ItemLocation* itemLoc = OTRGlobals::Instance->gRandoContext->GetItemLocation(rc);
+    const RandomizerCheckStatus status = itemLoc->GetCheckStatus();
+    const bool mysteryOn = CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("MysteriousShuffle"), 0) != 0;
+    std::string txt;
+    if (!IS_RANDO) {
+        return txt;
+    }
+    switch (status) {
+        case RCSHOW_SAVED:
+        case RCSHOW_COLLECTED:
+        case RCSHOW_SCUMMED:
+            txt = itemLoc->GetPlacedItem().GetName().GetForLanguage(gSaveContext.language);
+            break;
+        case RCSHOW_IDENTIFIED:
+        case RCSHOW_SEEN_OR_HINTED: {
+            const auto checkType = loc->GetRCType();
+            const bool hideMerchantName =
+                checkType == RCTYPE_MERCHANT &&
+                (!OTRGlobals::Instance->gRandomizer->GetRandoSettingValue(RSK_MERCHANT_TEXT_HINT) || mysteryOn);
+            const bool hideScrubName =
+                checkType == RCTYPE_SCRUB &&
+                (!OTRGlobals::Instance->gRandomizer->GetRandoSettingValue(RSK_SCRUB_TEXT_HINT) || mysteryOn);
+            const bool hideShopName = checkType == RCTYPE_SHOP && mysteryOn && IsMysteryShopItem(rc);
+            const bool revealItemName = !(hideMerchantName || hideScrubName || hideShopName);
+            if (itemLoc->GetPlacedRandomizerGet() == RG_ICE_TRAP && revealItemName) {
+                if (status == RCSHOW_IDENTIFIED) {
+                    txt = OTRGlobals::Instance->gRandoContext->overrides[rc].GetTrickName().GetForLanguage(
+                        gSaveContext.language);
+                } else {
+                    txt = Rando::StaticData::RetrieveItem(OTRGlobals::Instance->gRandoContext->overrides[rc].LooksLike())
+                              .GetName()
+                              .GetForLanguage(gSaveContext.language);
+                }
+            } else if (revealItemName) {
+                txt = itemLoc->GetPlacedItem().GetName().GetForLanguage(gSaveContext.language);
+            }
+            if (itemLoc->CanBePurchased() && IsVisibleInCheckTracker(rc) && status == RCSHOW_IDENTIFIED) {
+                auto price = itemLoc->GetPrice();
+                txt = !txt.empty() ? spdlog::fmt_lib::format("{} - {}", txt, price)
+                                   : spdlog::fmt_lib::format("{}", price);
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    return txt;
+}
+
+// Mirrors the skip button of DrawLocation.
+void SetCheckSkippedByPlayer(RandomizerCheck rc, bool skip) {
+    Rando::Location* loc = Rando::StaticData::GetLocation(rc);
+    Rando::ItemLocation* itemLoc = OTRGlobals::Instance->gRandoContext->GetItemLocation(rc);
+    if (itemLoc->HasObtained() || itemLoc->GetIsSkipped() == skip) {
+        return;
+    }
+    const bool available = itemLoc->IsAvailable();
+    itemLoc->SetIsSkipped(skip);
+    if (skip) {
+        areaChecksGotten[loc->GetArea()]++;
+        totalChecksGotten++;
+        if (available) {
+            areaChecksAvailable[loc->GetArea()]--;
+            totalChecksAvailable--;
+        }
+    } else {
+        areaChecksGotten[loc->GetArea()]--;
+        totalChecksGotten--;
+        if (available) {
+            areaChecksAvailable[loc->GetArea()]++;
+            totalChecksAvailable++;
+        }
+    }
+    UpdateOrdering(loc->GetArea());
+    UpdateInventoryChecks();
+    SaveManager::Instance->SaveSection(gSaveContext.fileNum, sectionId, true);
+}
 } // namespace CheckTracker

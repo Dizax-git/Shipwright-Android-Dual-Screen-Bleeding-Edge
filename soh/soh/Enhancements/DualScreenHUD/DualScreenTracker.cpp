@@ -6,6 +6,11 @@
 #include "soh/Enhancements/gameplaystats.h"
 #include "soh/ShipUtils.h"
 #include "soh/OTRGlobals.h"
+#include "soh/Enhancements/randomizer/randomizer_check_tracker.h"
+#include "soh/Enhancements/randomizer/randomizer_check_objects.h"
+#include "soh/Enhancements/randomizer/SeedContext.h"
+#include "soh/Enhancements/randomizer/location.h"
+#include "soh/Enhancements/randomizer/static_data.h"
 #include <fast/Fast3dGui.h>
 #include <ship/window/gui/IconsFontAwesome4.h>
 
@@ -22,6 +27,7 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 extern "C" {
@@ -71,6 +77,7 @@ constexpr float kScrollThreshold = 10.0f;
 enum TrackerTab {
     TAB_ITEMS = 0,
     TAB_HINTS = 1,
+    TAB_CHECKS = 2,
 };
 
 struct TouchEvent {
@@ -273,7 +280,7 @@ void DrawPauseCursor(ImDrawList* drawList, ImVec2 min, ImVec2 max) {
     }
 }
 
-void DrawTabButton(const char* label, TrackerTab tab, float width, float height) {
+void DrawTabButton(const char* label, TrackerTab tab, float width, float height, bool notify = false) {
     const bool selected = CVarGetInteger(CVAR_ENHANCEMENT("DualScreenTrackerTab"), TAB_ITEMS) == tab;
     const ImVec2 min = ImGui::GetCursorScreenPos();
     const ImVec2 max(min.x + width, min.y + height);
@@ -295,8 +302,15 @@ void DrawTabButton(const char* label, TrackerTab tab, float width, float height)
                       label);
     if (selected) {
         DrawPauseCursor(drawList, min, max);
+    } else if (notify) {
+        // Something new to look at in this tab: a small pulsing Navi-blue dot.
+        const float pulse = 0.5f + 0.5f * std::sin(static_cast<float>(ImGui::GetTime()) * 6.0f);
+        drawList->AddCircleFilled(ImVec2(max.x - 12.0f, min.y + 12.0f), 6.0f,
+                                  IM_COL32(120, 230, 255, static_cast<int>(140 + 115 * pulse)));
     }
 }
+
+#include "DualScreenChecks.inc"
 
 void DrawTrackerUi() {
     const ImGuiIO& io = ImGui::GetIO();
@@ -353,16 +367,25 @@ void DrawTrackerUi() {
         ImGui::Dummy(ImVec2(0.0f, barHeight + 8.0f));
     }
 
+    // The check data is followed on every frame, whatever the tab, so newly
+    // reachable checks are noticed even while another tab is shown.
+    const bool checksReady = Checks::Update();
+
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
-    const float tabWidth = (ImGui::GetContentRegionAvail().x - spacing) * 0.5f;
+    const float tabWidth = (ImGui::GetContentRegionAvail().x - spacing * 2.0f) / 3.0f;
     const float tabHeight = 44.0f;
     DrawTabButton(Label("Items", "Gegenstaende", "Objets"), TAB_ITEMS, tabWidth, tabHeight);
     ImGui::SameLine();
     DrawTabButton(Label("Hints", "Hinweise", "Indices"), TAB_HINTS, tabWidth, tabHeight);
+    ImGui::SameLine();
+    DrawTabButton(Label("Checks", "Checks", "Checks"), TAB_CHECKS, tabWidth, tabHeight,
+                  checksReady && Checks::HasFresh());
     ImGui::Dummy(ImVec2(0.0f, 4.0f));
 
     const int tab = CVarGetInteger(CVAR_ENHANCEMENT("DualScreenTrackerTab"), TAB_ITEMS);
-    if (tab == TAB_HINTS) {
+    if (tab == TAB_CHECKS) {
+        Checks::Draw(checksReady);
+    } else if (tab == TAB_HINTS) {
         ImGui::BeginChild("##DualScreenHints", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None);
         ImGui::PushFont(BigFont());
         HintTracker::DrawEmbedded();

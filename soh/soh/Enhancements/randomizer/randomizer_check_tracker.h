@@ -63,4 +63,18 @@ void SpoilAreaFromCantObtain(RandomizerGet rg);
 void RecalculateAvailableChecks(RandomizerRegion startingRegion = RR_ROOT, RandoAgeTime startingAgeTime = RAT_NONE);
 void LoadFromPreset(const nlohmann::json& info);
 bool AreAllSilversSpoiled();
+
+// Bottom-screen (Thor) check tracker tab. Data access for the embedded view.
+// Refreshes display settings from CVars and runs a pending availability
+// recalculation. Returns true once a save is loaded and the tracker is ready.
+bool EmbeddedBegin();
+// True when check availability (logic) is being computed.
+bool IsLogicShown();
+const std::vector<RandomizerCheck>& GetChecksForArea(RandomizerCheckArea area);
+RandomizerCheckArea GetCurrentTrackerArea();
+RandomizerCheck GetLastCheckedLocation();
+std::string GetCheckLabel(RandomizerCheck rc);
+// Item name (or price) the player already knows for this check, empty if none.
+std::string GetCheckItemText(RandomizerCheck rc);
+void SetCheckSkippedByPlayer(RandomizerCheck rc, bool skipped);
 } // namespace CheckTracker
