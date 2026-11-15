@@ -763,7 +763,7 @@ void SohMenu::AddMenuEnhancements() {
                               "main screen."));
     AddWidget(path, "Bottom Screen Tracker Scale: %.1fx", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_ENHANCEMENT("DualScreenTrackerScale"))
-        .Options(FloatSliderOptions().Min(1.0f).Max(3.0f).DefaultValue(1.6f).Format("%.1fx").Tooltip(
+        .Options(FloatSliderOptions().Min(1.5f).Max(3.0f).DefaultValue(2.0f).Format("%.1fx").Tooltip(
             "Size of the trackers on the secondary display."));
     AddWidget(path, "Bottom Screen: Maps & Compasses", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("DualScreenTrackerMaps"))

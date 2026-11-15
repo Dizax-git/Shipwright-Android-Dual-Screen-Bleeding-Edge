@@ -96,8 +96,18 @@ float sLastY = 0.0f;
 bool sReleaseHover = false;
 
 float GetUiScale() {
-    float scale = CVarGetFloat(CVAR_ENHANCEMENT("DualScreenTrackerScale"), 1.6f);
-    return std::clamp(scale, 1.0f, 3.0f);
+    float scale = CVarGetFloat(CVAR_ENHANCEMENT("DualScreenTrackerScale"), 2.0f);
+    return std::clamp(scale, 1.5f, 3.0f);
+}
+
+// Large fonts (rasterized at screen resolution, drawn at logical size: sharp text).
+ImFont* BigFont() {
+    return OTRGlobals::Instance->fontDualScreen != nullptr ? OTRGlobals::Instance->fontDualScreen
+                                                           : OTRGlobals::Instance->fontStandardLarger;
+}
+ImFont* HugeFont() {
+    return OTRGlobals::Instance->fontDualScreenLarge != nullptr ? OTRGlobals::Instance->fontDualScreenLarge
+                                                                : OTRGlobals::Instance->fontStandardLargest;
 }
 
 const char* Label(const char* en, const char* de, const char* fr) {
@@ -125,7 +135,7 @@ void ApplyTouchEvents(float scale) {
         sReleaseHover = false;
     }
 
-    const float fontSize = io.Fonts->Fonts.empty() ? 13.0f : io.Fonts->Fonts[0]->FontSize;
+    const float fontSize = BigFont()->FontSize / scale;
     for (const TouchEvent& event : events) {
         const float x = event.x / scale;
         const float y = event.y / scale;
@@ -206,7 +216,13 @@ bool EnsureContext() {
     style.WindowBorderSize = 0.0f;
     style.WindowPadding = ImVec2(8.0f, 6.0f);
     style.FrameRounding = 6.0f;
-    style.ScrollbarSize = 10.0f;
+    style.FramePadding = ImVec2(10.0f, 7.0f);
+    style.ItemSpacing = ImVec2(8.0f, 6.0f);
+    style.IndentSpacing = 16.0f;
+    style.ScrollbarSize = 6.0f;
+    style.Colors[ImGuiCol_Header] = ImVec4(0.16f, 0.14f, 0.24f, 1.0f);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.22f, 0.19f, 0.32f, 1.0f);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.26f, 0.22f, 0.38f, 1.0f);
 
     ImGui::SetCurrentContext(primary);
     sLastFrame = std::chrono::steady_clock::now();
@@ -236,8 +252,8 @@ void DrawTextbox(ImDrawList* drawList, ImVec2 min, ImVec2 max, ImU32 color) {
 void DrawPauseCursor(ImDrawList* drawList, ImVec2 min, ImVec2 max) {
     const float pulse = 0.5f + 0.5f * std::sin(static_cast<float>(ImGui::GetTime()) * 5.0f);
     const ImU32 color = IM_COL32(255, 255, static_cast<int>(60 + 150 * pulse), 255);
-    const float size = 12.0f;
-    const float inset = 3.0f;
+    const float size = 16.0f;
+    const float inset = 4.0f;
     struct Corner {
         const char* name;
         ImVec2 pos;
@@ -270,12 +286,13 @@ void DrawTabButton(const char* label, TrackerTab tab, float width, float height)
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
     DrawTextbox(drawList, min, max, selected ? IM_COL32(20, 20, 60, 235) : IM_COL32(0, 0, 0, 190));
-    ImGui::PushFont(OTRGlobals::Instance->fontStandardLarger);
-    const ImVec2 textSize = ImGui::CalcTextSize(label);
+    ImFont* font = HugeFont();
+    const float fontSize = 23.0f;
+    const ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label);
     const ImVec2 textPos(min.x + (width - textSize.x) * 0.5f, min.y + (height - textSize.y) * 0.5f);
-    drawList->AddText(ImVec2(textPos.x + 1.0f, textPos.y + 1.0f), IM_COL32(0, 0, 0, 200), label);
-    drawList->AddText(textPos, selected ? IM_COL32(255, 255, 120, 255) : IM_COL32(200, 200, 200, 255), label);
-    ImGui::PopFont();
+    drawList->AddText(font, fontSize, ImVec2(textPos.x + 2.0f, textPos.y + 2.0f), IM_COL32(0, 0, 0, 200), label);
+    drawList->AddText(font, fontSize, textPos, selected ? IM_COL32(255, 255, 120, 255) : IM_COL32(200, 200, 200, 255),
+                      label);
     if (selected) {
         DrawPauseCursor(drawList, min, max);
     }
@@ -308,8 +325,8 @@ void DrawTrackerUi() {
 
         // Large status bar: readable at a glance on the small bottom screen.
         ImDrawList* drawList = ImGui::GetWindowDrawList();
-        ImFont* font = OTRGlobals::Instance->fontStandardLarger;
-        const float textSize = ImGui::GetFontSize() * 2.3f;
+        ImFont* font = HugeFont();
+        const float textSize = 25.0f;
         const ImVec2 barMin = ImGui::GetCursorScreenPos();
         const float barHeight = textSize + 22.0f;
         const ImVec2 barMax(barMin.x + ImGui::GetContentRegionAvail().x, barMin.y + barHeight);
@@ -338,7 +355,7 @@ void DrawTrackerUi() {
 
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
     const float tabWidth = (ImGui::GetContentRegionAvail().x - spacing) * 0.5f;
-    const float tabHeight = 38.0f;
+    const float tabHeight = 50.0f;
     DrawTabButton(Label("Items", "Gegenstaende", "Objets"), TAB_ITEMS, tabWidth, tabHeight);
     ImGui::SameLine();
     DrawTabButton(Label("Hints", "Hinweise", "Indices"), TAB_HINTS, tabWidth, tabHeight);
@@ -347,7 +364,7 @@ void DrawTrackerUi() {
     const int tab = CVarGetInteger(CVAR_ENHANCEMENT("DualScreenTrackerTab"), TAB_ITEMS);
     if (tab == TAB_HINTS) {
         ImGui::BeginChild("##DualScreenHints", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None);
-        ImGui::PushFont(OTRGlobals::Instance->fontStandard);
+        ImGui::PushFont(BigFont());
         HintTracker::DrawEmbedded();
         ImGui::PopFont();
         ImGui::EndChild();
@@ -393,6 +410,9 @@ bool DualScreenTracker_Render(int surfaceWidth, int surfaceHeight) {
     const float scale = GetUiScale();
     io.DisplaySize = ImVec2(surfaceWidth / scale, surfaceHeight / scale);
     io.DisplayFramebufferScale = ImVec2(scale, scale);
+    // Fonts are rasterized at screen size: draw them at 1/scale so they land 1:1 on the panel.
+    io.FontGlobalScale = 1.0f / scale;
+    io.FontDefault = BigFont();
 
     const auto now = std::chrono::steady_clock::now();
     float deltaTime = std::chrono::duration<float>(now - sLastFrame).count();

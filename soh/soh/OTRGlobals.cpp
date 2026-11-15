@@ -341,6 +341,11 @@ OTRGlobals::OTRGlobals() {
         fontStandardLarger = CreateFontWithSize(20.0f, "fonts/Montserrat-Regular.ttf");
         fontStandardLargest = CreateFontWithSize(24.0f, "fonts/Montserrat-Regular.ttf");
         fontJapanese = CreateFontWithSize(24.0f, "fonts/NotoSansJP-Regular.ttf", true);
+#ifdef __ANDROID__
+        fontDualScreen = CreateFontWithSize(38.0f, "fonts/Montserrat-Regular.ttf");
+        fontDualScreenLarge = CreateFontWithSize(50.0f, "fonts/Montserrat-Regular.ttf");
+        fontDualScreenMono = CreateFontWithSize(34.0f, "fonts/Inconsolata-Regular.ttf");
+#endif
         ImGui::GetIO().FontDefault = fontStandardLarger;
     }
 

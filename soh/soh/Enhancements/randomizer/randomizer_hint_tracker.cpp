@@ -338,6 +338,13 @@ static bool DrawGroupHeader(const std::string& name, size_t read, size_t total, 
     }
     std::string label =
         name + " (" + std::to_string(read) + (showTotal ? "/" + std::to_string(total) : "") + ")###HintTracker" + name;
+    if (sEmbeddedDraw) {
+        // Full-width framed bar: the whole row is the touch target.
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.82f, 0.45f, 1.0f));
+        bool open = ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth);
+        ImGui::PopStyleColor();
+        return open;
+    }
     return ImGui::TreeNodeEx(label.c_str());
 }
 
@@ -346,6 +353,31 @@ static bool DrawGroupHeader(const std::string& name, size_t read, size_t total, 
 static HintTrackerViewMode DrawViewTabs() {
     HintTrackerViewMode viewMode =
         static_cast<HintTrackerViewMode>(CVarGetInteger(CVAR_TRACKER_HINT("ViewMode"), HINT_TRACKER_VIEW_LOCATIONS));
+    if (sEmbeddedDraw) {
+        // Bottom screen: two wide buttons, easy to hit with a finger.
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+        const ImVec2 size((ImGui::GetContentRegionAvail().x - spacing) * 0.5f, ImGui::GetFrameHeight() + 10.0f);
+        auto viewButton = [&](const CustomMessage& label, const char* id, HintTrackerViewMode mode) {
+            const bool selected = viewMode == mode;
+            ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImVec4(0.30f, 0.26f, 0.10f, 1.0f)
+                                                            : ImVec4(0.10f, 0.10f, 0.16f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected ? ImVec4(0.30f, 0.26f, 0.10f, 1.0f)
+                                                                   : ImVec4(0.10f, 0.10f, 0.16f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.40f, 0.34f, 0.14f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, selected ? ImVec4(1.0f, 0.92f, 0.45f, 1.0f)
+                                                          : ImVec4(0.75f, 0.75f, 0.75f, 1.0f));
+            if (ImGui::Button((label.GetForCurrentLanguage(MF_CLEAN) + id).c_str(), size) && !selected) {
+                viewMode = mode;
+                CVarSetInteger(CVAR_TRACKER_HINT("ViewMode"), mode);
+                Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+            }
+            ImGui::PopStyleColor(4);
+        };
+        viewButton(locationsTabLabel, "###HintTrackerLocationsBtn", HINT_TRACKER_VIEW_LOCATIONS);
+        ImGui::SameLine();
+        viewButton(journalTabLabel, "###HintTrackerJournalBtn", HINT_TRACKER_VIEW_JOURNAL);
+        return viewMode;
+    }
     // Force the saved tab selection once per session; afterwards ImGui owns it.
     static bool tabRestored = false;
     auto drawTab = [&](const CustomMessage& label, const char* id, HintTrackerViewMode mode, const char* tooltip) {
@@ -387,7 +419,7 @@ static void DrawHintList() {
     Color_Foolish = CVarGetColor(CVAR_TRACKER_HINT("FoolishColor.Value"), Color_Foolish_Default);
     Color_Found = CVarGetColor(CVAR_TRACKER_HINT("FoundColor.Value"), Color_Found_Default);
 
-    bool showExpandCollapse = CVarGetInteger(CVAR_TRACKER_HINT("ExpandCollapseButtonsVisible"), 1);
+    bool showExpandCollapse = !sEmbeddedDraw && CVarGetInteger(CVAR_TRACKER_HINT("ExpandCollapseButtonsVisible"), 1);
     // No on-screen keyboard on the bottom screen: hide the search box there.
     bool showSearch = !sEmbeddedDraw && CVarGetInteger(CVAR_TRACKER_HINT("SearchInputVisible"), 1);
     bool showTotals = CVarGetInteger(CVAR_TRACKER_HINT("HintTotalsVisible"), 1);

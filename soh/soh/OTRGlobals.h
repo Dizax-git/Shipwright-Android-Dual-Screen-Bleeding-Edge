@@ -61,6 +61,10 @@ class OTRGlobals {
     ImFont* fontMonoLarger = nullptr;
     ImFont* fontMonoLargest = nullptr;
     ImFont* fontJapanese = nullptr;
+    // Bottom-screen trackers (Android dual screen): rasterized large so text stays sharp there.
+    ImFont* fontDualScreen = nullptr;
+    ImFont* fontDualScreenLarge = nullptr;
+    ImFont* fontDualScreenMono = nullptr;
 
     OTRGlobals();
     ~OTRGlobals();

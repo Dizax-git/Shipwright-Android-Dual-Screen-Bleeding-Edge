@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <array>
 #include <map>
 #include <span>
@@ -2421,12 +2422,14 @@ static RegisterMenuInitFunc menuInitFunc(RegisterItemTrackerWidgets);
 // Dual-screen tracker (bottom screen): draws the tracker sections inside the
 // current ImGui window instead of the floating tracker windows.
 // ---------------------------------------------------------------------------
+static float sEmbeddedSpacing = 12.0f;
+
 static void DrawEmbeddedGrid(const char* id, const std::vector<ItemTrackerItem>& items, int columns) {
     if (items.empty()) {
         return;
     }
     const float iconSize = static_cast<float>(CVarGetInteger(CVAR_TRACKER_ITEM("IconSize"), 36));
-    const float iconSpacing = static_cast<float>(CVarGetInteger(CVAR_TRACKER_ITEM("IconSpacing"), 12));
+    const float iconSpacing = sEmbeddedSpacing;
     const size_t rows = (items.size() + columns - 1) / columns;
     const ImVec2 size(columns * (iconSize + iconSpacing) + 8.0f, rows * (iconSize + iconSpacing) + 8.0f);
     ImGui::BeginChild(id, size, ImGuiChildFlags_None,
@@ -2452,7 +2455,14 @@ static void DrawEmbeddedPanelFrame() {
 
 void ItemTracker_DrawEmbedded() {
     UpdateVectors();
-    ImGui::PushFont(OTRGlobals::Instance->fontMono);
+    ImGui::PushFont(OTRGlobals::Instance->fontDualScreenMono != nullptr ? OTRGlobals::Instance->fontDualScreenMono
+                                                                         : OTRGlobals::Instance->fontMono);
+    // Two panels of 6 columns share the width: spread the icons as far as the screen allows.
+    {
+        const float iconSize = static_cast<float>(CVarGetInteger(CVAR_TRACKER_ITEM("IconSize"), 36));
+        const float cell = (ImGui::GetContentRegionAvail().x - 2.0f * 8.0f - 20.0f - 12.0f) / 12.0f;
+        sEmbeddedSpacing = std::clamp(std::floor(cell - iconSize), 4.0f, 16.0f);
+    }
 
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 4.0f);
