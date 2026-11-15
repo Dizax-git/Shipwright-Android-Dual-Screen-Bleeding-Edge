@@ -2470,7 +2470,7 @@ void ItemTracker_DrawEmbedded() {
     DrawEmbeddedGrid("##dsMedallions", dungeonRewardMedallions, 6);
     DrawEmbeddedGrid("##dsSongs", songItems, 6);
     std::vector<ItemTrackerItem> compactDungeonItems =
-        CVarGetInteger(CVAR_TRACKER_ITEM("DungeonItems.DisplayMaps"), 1)
+        CVarGetInteger(CVAR_ENHANCEMENT("DualScreenTrackerMaps"), 0)
             ? GetDungeonItemsVector(itemTrackerDungeonsWithMapsCompact)
             : GetDungeonItemsVector(itemTrackerDungeonsCompact);
     DrawEmbeddedGrid("##dsDungeonItems", compactDungeonItems, 6);

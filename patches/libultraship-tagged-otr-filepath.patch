@@ -1,0 +1,14 @@
+diff --git a/src/fast/interpreter.cpp b/src/fast/interpreter.cpp
+index 5672f58..d1c9e22 100644
+--- a/src/fast/interpreter.cpp
++++ b/src/fast/interpreter.cpp
+@@ -4908,7 +4908,8 @@ static void gfx_step() {
+             if (w1 < 0x10000
+ #if UINTPTR_MAX > 0xFFFFFFFFu
+                 // On 64-bit: filter kernel/sentinel addresses.
+-                || w1 > 0x0000FFFFFFFFFFFFull
++                // ARM64 Android heap pointers can carry a top-byte memory tag; ignore it here too.
++                || (w1 & 0x00FFFFFFFFFFFFFFull) > 0x0000FFFFFFFFFFFFull
+ #endif
+             ) {
+                 ++g_exec_stack.currCmd();

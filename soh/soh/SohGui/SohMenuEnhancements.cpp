@@ -765,6 +765,11 @@ void SohMenu::AddMenuEnhancements() {
         .CVar(CVAR_ENHANCEMENT("DualScreenTrackerScale"))
         .Options(FloatSliderOptions().Min(1.0f).Max(3.0f).DefaultValue(1.6f).Format("%.1fx").Tooltip(
             "Size of the trackers on the secondary display."));
+    AddWidget(path, "Bottom Screen: Maps & Compasses", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("DualScreenTrackerMaps"))
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Also show dungeon maps and compasses in the bottom-screen item tracker "
+            "(keys are always shown)."));
 #endif
     AddWidget(path, "Minimal UI", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("MinimalUI"))

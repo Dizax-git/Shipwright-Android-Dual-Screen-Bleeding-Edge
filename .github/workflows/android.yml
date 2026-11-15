@@ -20,6 +20,14 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Apply Thor libultraship patches
+        shell: pwsh
+        run: |
+          Get-ChildItem patches -Filter 'libultraship-*.patch' | Sort-Object Name | ForEach-Object {
+            git -C libultraship apply --verbose --ignore-whitespace "../patches/$($_.Name)"
+            if ($LASTEXITCODE -ne 0) { throw "patch failed: $($_.Name)" }
+          }
+
       - name: Configure Java 21
         uses: actions/setup-java@v4
         with:

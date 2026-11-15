@@ -306,27 +306,34 @@ void DrawTrackerUi() {
         char clock[16];
         std::snprintf(clock, sizeof(clock), "%02u:%02u", daySeconds / 3600, daySeconds % 3600 / 60);
 
+        // Large status bar: readable at a glance on the small bottom screen.
         ImDrawList* drawList = ImGui::GetWindowDrawList();
+        ImFont* font = OTRGlobals::Instance->fontStandardLarger;
+        const float textSize = ImGui::GetFontSize() * 2.3f;
         const ImVec2 barMin = ImGui::GetCursorScreenPos();
-        const float barHeight = ImGui::GetTextLineHeight() + 10.0f;
+        const float barHeight = textSize + 22.0f;
         const ImVec2 barMax(barMin.x + ImGui::GetContentRegionAvail().x, barMin.y + barHeight);
-        DrawTextbox(drawList, barMin, barMax, IM_COL32(0, 0, 0, 190));
+        DrawTextbox(drawList, barMin, barMax, IM_COL32(0, 0, 0, 200));
 
-        const float textY = barMin.y + 5.0f;
+        const float textY = barMin.y + (barHeight - textSize) * 0.5f;
+        auto shadowText = [&](ImVec2 pos, ImU32 color, const char* text) {
+            drawList->AddText(font, textSize, ImVec2(pos.x + 2.0f, pos.y + 2.0f), IM_COL32(0, 0, 0, 220), text);
+            drawList->AddText(font, textSize, pos, color, text);
+        };
         const std::string runLabel = std::string(ICON_FA_HOURGLASS_HALF " ") + runTime;
-        drawList->AddText(ImVec2(barMin.x + 14.0f, textY), IM_COL32(255, 255, 255, 255), runLabel.c_str());
+        shadowText(ImVec2(barMin.x + 20.0f, textY), IM_COL32(255, 255, 255, 255), runLabel.c_str());
 
         const ImU32 clockColor = isNight ? IM_COL32(150, 180, 255, 255) : IM_COL32(255, 220, 100, 255);
-        const float iconSize = ImGui::GetTextLineHeight();
-        const float clockWidth = ImGui::CalcTextSize(clock).x;
-        const float clockX = barMax.x - 14.0f - clockWidth;
+        const float iconSize = textSize;
+        const float clockWidth = font->CalcTextSizeA(textSize, FLT_MAX, 0.0f, clock).x;
+        const float clockX = barMax.x - 20.0f - clockWidth;
         ImTextureID clockIcon = Tex("DST_CLOCK");
         if (clockIcon != nullptr) {
-            drawList->AddImage(clockIcon, ImVec2(clockX - iconSize - 6.0f, textY),
-                               ImVec2(clockX - 6.0f, textY + iconSize), ImVec2(0, 0), ImVec2(1, 1), clockColor);
+            drawList->AddImage(clockIcon, ImVec2(clockX - iconSize - 10.0f, textY),
+                               ImVec2(clockX - 10.0f, textY + iconSize), ImVec2(0, 0), ImVec2(1, 1), clockColor);
         }
-        drawList->AddText(ImVec2(clockX, textY), clockColor, clock);
-        ImGui::Dummy(ImVec2(0.0f, barHeight + 4.0f));
+        shadowText(ImVec2(clockX, textY), clockColor, clock);
+        ImGui::Dummy(ImVec2(0.0f, barHeight + 8.0f));
     }
 
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
