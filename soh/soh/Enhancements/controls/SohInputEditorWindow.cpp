@@ -1267,6 +1267,53 @@ void SohInputEditorWindow::DrawGyroSection(uint8_t port) {
         }
         ImGui::EndGroup();
         ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x, ImGui::GetCursorPos().y - SCALE_IMGUI_SIZE(8)));
+
+        // Gyro aiming settings (Thor build, modelled on Dusk). Applied on top of
+        // the device sensitivity above, in first-person view and when aiming.
+        ImGui::SeparatorText("Gyro Aiming");
+        CVarSliderFloat("Horizontal Sensitivity", CVAR_SETTING("Gyro.SensitivityX"),
+                        FloatSliderOptions()
+                            .Color(THEME_COLOR)
+                            .IsPercentage()
+                            .Min(0.1f)
+                            .Max(5.0f)
+                            .Step(0.05f)
+                            .DefaultValue(1.0f)
+                            .ShowButtons(true)
+                            .Tooltip("How fast the aim turns left/right when you turn the console."));
+        CVarSliderFloat("Vertical Sensitivity", CVAR_SETTING("Gyro.SensitivityY"),
+                        FloatSliderOptions()
+                            .Color(THEME_COLOR)
+                            .IsPercentage()
+                            .Min(0.1f)
+                            .Max(5.0f)
+                            .Step(0.05f)
+                            .DefaultValue(1.0f)
+                            .ShowButtons(true)
+                            .Tooltip("How fast the aim moves up/down when you tilt the console."));
+        CVarCheckbox("Invert Horizontal Gyro", CVAR_SETTING("Gyro.InvertX"), CheckboxOptions().Color(THEME_COLOR));
+        CVarCheckbox("Invert Vertical Gyro", CVAR_SETTING("Gyro.InvertY"), CheckboxOptions().Color(THEME_COLOR));
+        CVarSliderFloat("Deadband (degrees per second)", CVAR_SETTING("Gyro.Deadband"),
+                        FloatSliderOptions()
+                            .Color(THEME_COLOR)
+                            .Format("%.1f")
+                            .Min(0.0f)
+                            .Max(10.0f)
+                            .Step(0.1f)
+                            .DefaultValue(0.6f)
+                            .ShowButtons(true)
+                            .Tooltip("Movements slower than this are ignored. Raise it if the aim drifts while "
+                                     "the console is still, lower it if small motions are missed."));
+        CVarSliderFloat("Smoothing", CVAR_SETTING("Gyro.Smoothing"),
+                        FloatSliderOptions()
+                            .Color(THEME_COLOR)
+                            .IsPercentage()
+                            .Min(0.0f)
+                            .Max(0.9f)
+                            .Step(0.05f)
+                            .DefaultValue(0.0f)
+                            .ShowButtons(true)
+                            .Tooltip("Evens out shaky hands, at the cost of a little delay. 0% = raw gyro."));
     } else {
         ImGui::AlignTextToFramePadding();
         ImGui::BulletText("Add gyro device");

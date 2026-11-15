@@ -12583,6 +12583,45 @@ void Player_Destroy(Actor* thisx, PlayState* play) {
     gSaveContext.linkAge = play->linkAgeOnLoad;
 }
 
+// Gyro aiming settings (Thor build, modelled on Dusk): separate horizontal /
+// vertical sensitivity, axis inversion, a deadband against drift and optional
+// smoothing. Values are filtered once per game frame, since this function can
+// run more than once in a frame.
+static void Player_GetGyroAim(PlayState* play, f32* outPitch, f32* outYaw) {
+    static u32 sLastFrame = 0xFFFFFFFF;
+    static f32 sPitch = 0.0f;
+    static f32 sYaw = 0.0f;
+    if (play->gameplayFrames != sLastFrame) {
+        sLastFrame = play->gameplayFrames;
+        f32 pitch = sControlInput->cur.gyro_x;
+        f32 yaw = sControlInput->cur.gyro_y;
+        // Deadband in degrees per second (the stock threshold was 0.01 rad/s).
+        f32 deadband = CVarGetFloat(CVAR_SETTING("Gyro.Deadband"), 0.6f) * (M_PI / 180.0f);
+        if (fabsf(pitch) < deadband) {
+            pitch = 0.0f;
+        }
+        if (fabsf(yaw) < deadband) {
+            yaw = 0.0f;
+        }
+        pitch *= CVarGetFloat(CVAR_SETTING("Gyro.SensitivityY"), 1.0f) *
+                 (CVarGetInteger(CVAR_SETTING("Gyro.InvertY"), 0) ? -1.0f : 1.0f);
+        yaw *= CVarGetFloat(CVAR_SETTING("Gyro.SensitivityX"), 1.0f) *
+               (CVarGetInteger(CVAR_SETTING("Gyro.InvertX"), 0) ? -1.0f : 1.0f);
+        f32 smoothing = CLAMP(CVarGetFloat(CVAR_SETTING("Gyro.Smoothing"), 0.0f), 0.0f, 0.9f);
+        sPitch = sPitch * smoothing + pitch * (1.0f - smoothing);
+        sYaw = sYaw * smoothing + yaw * (1.0f - smoothing);
+        if (pitch == 0.0f && fabsf(sPitch) < 0.001f) {
+            sPitch = 0.0f;
+        }
+        if (yaw == 0.0f && fabsf(sYaw) < 0.001f) {
+            sYaw = 0.0f;
+        }
+    }
+    // Keep the result within what the s16 aim accumulators can take (x750).
+    *outPitch = CLAMP(sPitch, -20.0f, 20.0f);
+    *outYaw = CLAMP(sYaw, -20.0f, 20.0f);
+}
+
 // first person manipulate player actor
 s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
     s32 temp1 = 0;
@@ -12600,6 +12639,9 @@ s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
 
     GameInteractor_ExecuteOnPlayerFirstPersonControl(this);
 
+    f32 gyroPitch, gyroYaw;
+    Player_GetGyroAim(play, &gyroPitch, &gyroYaw);
+
 #ifdef __ANDROID__
     f32 touchCamX = 0.0f, touchCamY = 0.0f;
     Ship_Mobile_HandleTouchCamera(&touchCamX, &touchCamY);
@@ -12613,8 +12655,8 @@ s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
         if (CVarGetInteger(CVAR_SETTING("Controls.RightStickAim"), 0)) {
             temp2 += sControlInput->rel.right_stick_y * 240.0f * invertYAxisMulti * yAxisMulti;
         }
-        if (fabsf(sControlInput->cur.gyro_x) > 0.01f) {
-            temp2 += (-sControlInput->cur.gyro_x) * 750.0f;
+        if (gyroPitch != 0.0f) {
+            temp2 += (-gyroPitch) * 750.0f;
         }
         if (CVarGetInteger(CVAR_SETTING("DisableFirstPersonAutoCenterView"), 0)) {
             this->actor.focus.rot.x += temp2 * 0.1f;
@@ -12631,8 +12673,8 @@ s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
         if (CVarGetInteger(CVAR_SETTING("Controls.RightStickAim"), 0)) {
             temp2 += sControlInput->rel.right_stick_x * -16.0f * invertXAxisMulti * xAxisMulti;
         }
-        if (fabsf(sControlInput->cur.gyro_y) > 0.01f) {
-            temp2 += (sControlInput->cur.gyro_y) * 750.0f * invertXAxisMulti;
+        if (gyroYaw != 0.0f) {
+            temp2 += gyroYaw * 750.0f * invertXAxisMulti;
         }
         temp2 = CLAMP(temp2, -3000, 3000);
         this->actor.focus.rot.y += temp2;
@@ -12650,8 +12692,8 @@ s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
                      (s32)((1.0f - Math_CosS(sControlInput->rel.right_stick_y * 200)) * 1500.0f) * invertYAxisMulti *
                      yAxisMulti;
         }
-        if (fabsf(sControlInput->cur.gyro_x) > 0.01f) {
-            temp3 += (-sControlInput->cur.gyro_x) * 750.0f;
+        if (gyroPitch != 0.0f) {
+            temp3 += (-gyroPitch) * 750.0f;
         }
 #ifdef __ANDROID__
         temp3 += (s32)(touchCamY * -5.0f * invertYAxisMulti * yAxisMulti);
@@ -12673,8 +12715,8 @@ s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
                      (s32)((1.0f - Math_CosS(sControlInput->rel.right_stick_x * 200)) * -1500.0f) * invertXAxisMulti *
                      xAxisMulti;
         }
-        if (fabsf(sControlInput->cur.gyro_y) > 0.01f) {
-            temp3 += (sControlInput->cur.gyro_y) * 750.0f * invertXAxisMulti;
+        if (gyroYaw != 0.0f) {
+            temp3 += gyroYaw * 750.0f * invertXAxisMulti;
         }
 #ifdef __ANDROID__
         temp3 += (s32)(touchCamX * -5.0f * invertXAxisMulti * xAxisMulti);
