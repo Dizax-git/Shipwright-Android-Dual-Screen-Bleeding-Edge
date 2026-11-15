@@ -1,0 +1,77 @@
+diff --git a/src/ship/controller/controldevice/controller/mapping/sdl/SDLGyroMapping.cpp b/src/ship/controller/controldevice/controller/mapping/sdl/SDLGyroMapping.cpp
+index 751e68b..5e668dc 100644
+--- a/src/ship/controller/controldevice/controller/mapping/sdl/SDLGyroMapping.cpp
++++ b/src/ship/controller/controldevice/controller/mapping/sdl/SDLGyroMapping.cpp
+@@ -8,6 +8,35 @@
+ #include "ship/controller/controldeck/ControlDeck.h"
+ 
+ namespace Ship {
++#ifdef __ANDROID__
++// Handhelds such as the AYN Thor expose their gyroscope as an Android device sensor,
++// not as a sensor of the built-in game controller. Fall back to it when no gamepad has one.
++static SDL_Sensor* GetAndroidDeviceGyro() {
++    static SDL_Sensor* sSensor = nullptr;
++    static bool sTried = false;
++    if (!sTried) {
++        sTried = true;
++        if (SDL_WasInit(SDL_INIT_SENSOR) == 0 && SDL_InitSubSystem(SDL_INIT_SENSOR) != 0) {
++            SPDLOG_WARN("Gyro: could not init SDL sensors: {}", SDL_GetError());
++            return nullptr;
++        }
++        for (int i = 0; i < SDL_NumSensors(); i++) {
++            if (SDL_SensorGetDeviceType(i) == SDL_SENSOR_GYRO) {
++                sSensor = SDL_SensorOpen(i);
++                SPDLOG_INFO("Gyro: using Android device sensor '{}'", SDL_SensorGetDeviceName(i));
++                break;
++            }
++        }
++    }
++    return sSensor;
++}
++
++static bool ReadAndroidDeviceGyro(float* gyroData) {
++    SDL_Sensor* sensor = GetAndroidDeviceGyro();
++    return sensor != nullptr && SDL_SensorGetData(sensor, gyroData, 3) == 0;
++}
++#endif
++
+ SDLGyroMapping::SDLGyroMapping(uint8_t portIndex, float sensitivity, float neutralPitch, float neutralYaw,
+                                float neutralRoll)
+     : ControllerInputMapping(PhysicalDeviceType::SDLGamepad),
+@@ -35,6 +64,18 @@ void SDLGyroMapping::Recalibrate() {
+         return;
+     }
+ 
++#ifdef __ANDROID__
++    {
++        float gyroData[3];
++        if (ReadAndroidDeviceGyro(gyroData)) {
++            mNeutralPitch = gyroData[0];
++            mNeutralYaw = gyroData[1];
++            mNeutralRoll = gyroData[2];
++            return;
++        }
++    }
++#endif
++
+     // if we didn't find a gyro device zero everything out
+     mNeutralPitch = 0;
+     mNeutralYaw = 0;
+@@ -66,6 +107,17 @@ void SDLGyroMapping::UpdatePad(float& x, float& y) {
+         return;
+     }
+ 
++#ifdef __ANDROID__
++    {
++        float gyroData[3];
++        if (ReadAndroidDeviceGyro(gyroData)) {
++            x = (gyroData[0] - mNeutralPitch) * mSensitivity;
++            y = (gyroData[1] - mNeutralYaw) * mSensitivity;
++            return;
++        }
++    }
++#endif
++
+     // if we didn't find a gyro device zero everything out
+     x = 0;
+     y = 0;
