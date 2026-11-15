@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ship/window/gui/GuiWindow.h>
+#include "soh/Enhancements/randomizer/randomizerEnums.h"
 
 typedef enum {
     // Every hint location grouped by area, with unread hint text masked.
@@ -13,6 +14,8 @@ namespace HintTracker {
 
 // Draws the hint list inside the current ImGui window (dual-screen bottom display).
 void DrawEmbedded();
+// True once the player has seen this hint (gossip stone, altar, ...).
+bool IsHintReadByPlayer(RandomizerHint hintKey);
 
 class HintTrackerSettingsWindow final : public Ship::GuiWindow {
   public:

@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <cmath>
+#include <cfloat>
+#include <cctype>
 #include <array>
 #include <map>
 #include <span>
@@ -25,6 +27,9 @@
 #include "static_data.h"
 #include "soh/SohGui/UIWidgets.hpp"
 #include "soh/util.h"
+#include "randomizer_hint_tracker.h"
+#include "SeedContext.h"
+#include "location.h"
 #include "soh/Enhancements/randomizer/randomizer.h"
 #include "soh/Enhancements/randomizer/dungeon.h"
 #include "soh/Enhancements/randomizer/randomizer_entrance_tracker.h"
@@ -2424,6 +2429,81 @@ static RegisterMenuInitFunc menuInitFunc(RegisterItemTrackerWidgets);
 // ---------------------------------------------------------------------------
 static float sEmbeddedSpacing = 12.0f;
 
+// Where each spiritual stone / medallion is, once the Temple of Time altar told the player.
+static std::map<uint32_t, std::string> sRewardLocationLabels;
+
+static std::string ShortAreaLabel(RandomizerCheck rc) {
+    if (rc == RC_LINKS_POCKET) {
+        return "FREE";
+    }
+    switch (Rando::StaticData::GetLocation(rc)->GetArea()) {
+        case RCAREA_DEKU_TREE:
+            return "DEKU";
+        case RCAREA_DODONGOS_CAVERN:
+            return "DCVN";
+        case RCAREA_JABU_JABUS_BELLY:
+            return "JABU";
+        case RCAREA_FOREST_TEMPLE:
+            return "FRST";
+        case RCAREA_FIRE_TEMPLE:
+            return "FIRE";
+        case RCAREA_WATER_TEMPLE:
+            return "WATR";
+        case RCAREA_SPIRIT_TEMPLE:
+            return "SPRT";
+        case RCAREA_SHADOW_TEMPLE:
+            return "SHDW";
+        case RCAREA_BOTTOM_OF_THE_WELL:
+            return "BOTW";
+        case RCAREA_ICE_CAVERN:
+            return "ICE";
+        case RCAREA_GERUDO_TRAINING_GROUND:
+            return "GTG";
+        case RCAREA_GANONS_CASTLE:
+            return "GANON";
+        default: {
+            std::string name = RandomizerCheckObjects::GetRCAreaName(Rando::StaticData::GetLocation(rc)->GetArea());
+            std::string label;
+            for (char c : name) {
+                if (c != ' ' && c != '\'' && label.size() < 5) {
+                    label += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                }
+            }
+            return label;
+        }
+    }
+}
+
+static void UpdateRewardLocationLabels() {
+    sRewardLocationLabels.clear();
+    if (!IS_RANDO || OTRGlobals::Instance->gRandoContext == nullptr) {
+        return;
+    }
+    auto ctx = OTRGlobals::Instance->gRandoContext;
+    static const std::map<RandomizerGet, uint32_t> rewardQuest = {
+        { RG_KOKIRI_EMERALD, QUEST_KOKIRI_EMERALD },     { RG_GORON_RUBY, QUEST_GORON_RUBY },
+        { RG_ZORA_SAPPHIRE, QUEST_ZORA_SAPPHIRE },       { RG_FOREST_MEDALLION, QUEST_MEDALLION_FOREST },
+        { RG_FIRE_MEDALLION, QUEST_MEDALLION_FIRE },     { RG_WATER_MEDALLION, QUEST_MEDALLION_WATER },
+        { RG_SPIRIT_MEDALLION, QUEST_MEDALLION_SPIRIT }, { RG_SHADOW_MEDALLION, QUEST_MEDALLION_SHADOW },
+        { RG_LIGHT_MEDALLION, QUEST_MEDALLION_LIGHT },
+    };
+    for (RandomizerHint altar : { RH_ALTAR_CHILD, RH_ALTAR_ADULT }) {
+        auto hint = ctx->GetHint(altar);
+        if (hint == nullptr || !hint->IsEnabled() || !HintTracker::IsHintReadByPlayer(altar)) {
+            continue;
+        }
+        for (RandomizerCheck rc : hint->GetHintedLocations()) {
+            if (rc == RC_UNKNOWN_CHECK) {
+                continue;
+            }
+            auto reward = rewardQuest.find(ctx->GetItemLocation(rc)->GetPlacedRandomizerGet());
+            if (reward != rewardQuest.end()) {
+                sRewardLocationLabels[reward->second] = ShortAreaLabel(rc);
+            }
+        }
+    }
+}
+
 static void DrawEmbeddedGrid(const char* id, const std::vector<ItemTrackerItem>& items, int columns) {
     if (items.empty()) {
         return;
@@ -2439,7 +2519,22 @@ static void DrawEmbeddedGrid(const char* id, const std::vector<ItemTrackerItem>&
         const size_t row = i / columns;
         const size_t column = i % columns;
         ImGui::SetCursorPos(ImVec2(column * (iconSize + iconSpacing) + 4.0f, row * (iconSize + iconSpacing) + 4.0f));
+        const ImVec2 iconPos = ImGui::GetCursorScreenPos();
         items[i].drawFunc(items[i]);
+        if (items[i].kind == ITEM_KIND_QUEST) {
+            auto label = sRewardLocationLabels.find(items[i].id);
+            if (label != sRewardLocationLabels.end()) {
+                // Dungeon tag under the stone/medallion, like the key labels.
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                ImFont* font = ImGui::GetFont();
+                const float size = ImGui::GetFontSize() * 0.75f;
+                const ImVec2 textSize = font->CalcTextSizeA(size, FLT_MAX, 0.0f, label->second.c_str());
+                const ImVec2 pos(iconPos.x + (iconSize - textSize.x) * 0.5f, iconPos.y + iconSize - textSize.y * 0.6f);
+                drawList->AddText(font, size, ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 230),
+                                  label->second.c_str());
+                drawList->AddText(font, size, pos, IM_COL32(255, 230, 120, 255), label->second.c_str());
+            }
+        }
     }
     ImGui::EndChild();
 }
@@ -2455,6 +2550,7 @@ static void DrawEmbeddedPanelFrame() {
 
 void ItemTracker_DrawEmbedded() {
     UpdateVectors();
+    UpdateRewardLocationLabels();
     ImGui::PushFont(OTRGlobals::Instance->fontDualScreenMono != nullptr ? OTRGlobals::Instance->fontDualScreenMono
                                                                          : OTRGlobals::Instance->fontMono);
     // Two panels of 6 columns share the width: spread the icons as far as the screen allows.

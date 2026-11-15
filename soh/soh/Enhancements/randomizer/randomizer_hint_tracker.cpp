@@ -717,6 +717,10 @@ void HintTrackerWindow::DrawElement() {
 }
 
 // Dual-screen tracker (bottom screen): draws the hint list inside the current ImGui window.
+bool IsHintReadByPlayer(RandomizerHint hintKey) {
+    return IsHintRead(hintKey);
+}
+
 void DrawEmbedded() {
     if (!GameInteractor::IsSaveLoaded()) {
         ImGui::TextUnformatted(waitingMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
