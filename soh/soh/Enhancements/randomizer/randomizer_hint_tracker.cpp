@@ -334,10 +334,10 @@ static void DrawHintEntry(const HintEntry& entry) {
     if (nameColor != nullptr) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(nameColor->r / 255.0f, nameColor->g / 255.0f, nameColor->b / 255.0f,
                                                     nameColor->a / 255.0f));
-        ImGui::TextUnformatted(name.c_str());
+        ImGui::TextWrapped("%s", name.c_str());
         ImGui::PopStyleColor();
     } else {
-        ImGui::TextUnformatted(name.c_str());
+        ImGui::TextWrapped("%s", name.c_str());
     }
     if (entry.compact) {
         return;
@@ -662,6 +662,10 @@ static void DrawHintList() {
     }
 
     // House of Skulltula: what each family member promised, once they said it.
+    // Locations view: its own group at the bottom, one entry per reward.
+    // Journal view: a one-line-per-reward summary right after Way of the Hero /
+    // Foolish, before the item hints, so it isn't buried at the end.
+    size_t skullEntries = 0;
     {
         std::set<int> skulls;
         {
@@ -679,7 +683,14 @@ static void DrawHintList() {
                 continue;
             }
             auto location = ctx->GetItemLocation(check->second);
-            HintGroup& group = groups[static_cast<size_t>(1) << 30];
+            const bool collected = location->HasObtained();
+            // "Hide found" removes collected rewards from the journal, like hints.
+            if (journalView && collected && CVarGetInteger(CVAR_TRACKER_HINT("HideFound"), 0)) {
+                continue;
+            }
+            const size_t skullGroupKey =
+                journalView ? typeGroupKey(HINT_TYPE_ITEM) - 1 : static_cast<size_t>(1) << 30;
+            HintGroup& group = groups[skullGroupKey];
             if (group.name.empty()) {
                 group.name = skulltulaHouseLabel.GetForCurrentLanguage(MF_CLEAN);
             }
@@ -688,9 +699,16 @@ static void DrawHintList() {
             Rando::Item& item = Rando::StaticData::RetrieveItem(location->GetPlacedRandomizerGet());
             HintEntry entry{ RH_NONE, std::to_string(count) + " Skulltulas" };
             entry.sortRank = count;
-            entry.found = location->HasObtained();
-            entry.customText = item.GetHint().GetHintMessage().GetForCurrentLanguage(MF_CLEAN);
+            entry.found = collected;
+            std::string itemText = item.GetHint().GetHintMessage().GetForCurrentLanguage(MF_CLEAN);
+            if (journalView) {
+                entry.name = std::to_string(count) + " : " + itemText;
+                entry.compact = true;
+            } else {
+                entry.customText = itemText;
+            }
             group.entries.push_back(entry);
+            skullEntries++;
         }
     }
 
@@ -702,7 +720,7 @@ static void DrawHintList() {
         ImGui::TextWrapped("%s", noHintsMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
         return;
     }
-    if (journalView && readCount == 0) {
+    if (journalView && readCount == 0 && skullEntries == 0) {
         ImGui::TextWrapped("%s", journalEmptyMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
         return;
     }
