@@ -326,6 +326,13 @@ function Invoke-SohWindowsAndroidBuild {
             $expectedCommit = (Invoke-SohProcess -FilePath $git -Arguments @('rev-parse', 'HEAD') -WorkingDirectory $repository -Quiet).Output.Trim()
             $actualCommit = (Invoke-SohProcess -FilePath $git -Arguments @('rev-parse', 'HEAD') -WorkingDirectory $source -Quiet).Output.Trim()
             if ($actualCommit -ne $expectedCommit) { throw "Isolated checkout mismatch: expected $expectedCommit, found $actualCommit" }
+            # Thor fork: apply the libultraship fixes kept as patches (the submodule pins upstream commits).
+            Get-ChildItem -LiteralPath (Join-Path $source 'patches') -Filter 'libultraship-*.patch' -ErrorAction SilentlyContinue |
+                Sort-Object Name | ForEach-Object {
+                    $null = Invoke-SohProcess -FilePath $git -Arguments @(
+                        '-C', (Join-Path $source 'libultraship'), 'apply', '--ignore-whitespace', $_.FullName
+                    ) -WorkingDirectory $working
+                }
         }
 
         $vcpkg = Join-Path $working 'vcpkg'
