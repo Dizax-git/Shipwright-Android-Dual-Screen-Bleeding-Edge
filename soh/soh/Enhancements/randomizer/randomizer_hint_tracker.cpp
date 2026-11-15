@@ -45,6 +45,8 @@ static Color_RGBA8 Color_Background = { 0, 0, 0, 255 };
 // OnRandoHintRevealed hook) and read by SaveManager's save thread.
 static std::mutex readHintsMutex;
 static std::set<RandomizerHint> readHints;
+// House of Skulltula rewards the family has told the player about (10, 20, ... tokens).
+static std::set<int> seenSkulltulaRewards;
 static int sectionId = -1;
 static RandomizerCheckArea currentArea = RCAREA_INVALID;
 static bool doAreaScroll = false;
@@ -96,6 +98,8 @@ static const CustomMessage skulltulaTokensLabel =
 static const CustomMessage heartsLabel = CustomMessage("Hearts", "Herzen", "Cœurs");
 static const CustomMessage lesserItemsLabel = CustomMessage("Lesser Items", "Kleinere Gegenstände", "Objets mineurs");
 static const CustomMessage junkItemsLabel = CustomMessage("Junk Items", "Nutzlose Gegenstände", "Objets inutiles");
+static const CustomMessage skulltulaHouseLabel =
+    CustomMessage("House of Skulltula", "Skulltula-Haus", "Maison des Skulltulas");
 static const CustomMessage otherHintsLabel = CustomMessage("Other Hints", "Sonstige Hinweise", "Autres indices");
 static const CustomMessage hintsReadLabel = CustomMessage("Hints Read", "Hinweise gelesen", "Indices lus");
 static const CustomMessage noHintsMessage =
@@ -134,15 +138,20 @@ static void MarkHintAsRead(RandomizerHint hintKey) {
 void InitHintTrackerData(bool isDebug) {
     std::lock_guard<std::mutex> lock(readHintsMutex);
     readHints.clear();
+    seenSkulltulaRewards.clear();
     hintTextCache.clear();
 }
 
 void SaveHintTrackerData(const SaveContext& saveContext, int sectionID, bool fullSave) {
     std::vector<RandomizerHint> hints;
+    std::vector<int> skulls;
     {
         std::lock_guard<std::mutex> lock(readHintsMutex);
         hints.assign(readHints.begin(), readHints.end());
+        skulls.assign(seenSkulltulaRewards.begin(), seenSkulltulaRewards.end());
     }
+    SaveManager::Instance->SaveArray("seenSkulltulaRewards", skulls.size(),
+                                     [&](size_t i) { SaveManager::Instance->SaveData("", skulls[i]); });
     // Hints are stored by canonical name rather than enum value so saved
     // flags survive hints being added to or removed from the enum. find()
     // rather than operator[] so a missing name can't mutate the shared table
@@ -170,8 +179,29 @@ void LoadHintTrackerData() {
             loaded.insert(static_cast<RandomizerHint>(it->second));
         }
     });
+    std::set<int> skulls;
+    SaveManager::Instance->LoadArray("seenSkulltulaRewards", 8, [&](size_t i) {
+        nlohmann::json value;
+        SaveManager::Instance->LoadData("", value, nlohmann::json());
+        if (value.is_number_integer()) {
+            skulls.insert(value.get<int>());
+        }
+    });
     std::lock_guard<std::mutex> lock(readHintsMutex);
     readHints = std::move(loaded);
+    seenSkulltulaRewards = std::move(skulls);
+}
+
+void MarkSkulltulaRewardSeen(uint8_t count) {
+    {
+        std::lock_guard<std::mutex> lock(readHintsMutex);
+        if (!seenSkulltulaRewards.insert(count).second) {
+            return;
+        }
+    }
+    if (sectionId >= 0) {
+        SaveManager::Instance->SaveSection(gSaveContext.fileNum, sectionId, true);
+    }
 }
 
 // Decodes the current save's player name, for substituting the '@' player
@@ -255,6 +285,8 @@ struct HintEntry {
     // True once every location this hint points at has been collected. Found
     // entries sink to the bottom of their group and render dimmed with a tick.
     bool found = false;
+    // Text shown instead of a RandomizerHint's message (House of Skulltula rewards).
+    std::string customText;
 };
 
 // Most valuable first, mirroring the ordering implied by chest size & color
@@ -311,7 +343,13 @@ static void DrawHintEntry(const HintEntry& entry) {
         return;
     }
     ImGui::Indent();
-    if (IsHintRead(entry.hintKey)) {
+    if (!entry.customText.empty()) {
+        const Color_RGBA8& textColor = entry.found ? Color_Found : Color_ReadText;
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(textColor.r / 255.0f, textColor.g / 255.0f, textColor.b / 255.0f,
+                                                    textColor.a / 255.0f));
+        ImGui::TextWrapped("%s", entry.customText.c_str());
+        ImGui::PopStyleColor();
+    } else if (IsHintRead(entry.hintKey)) {
         const Color_RGBA8& textColor = entry.found ? Color_Found : Color_ReadText;
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(textColor.r / 255.0f, textColor.g / 255.0f, textColor.b / 255.0f,
                                                     textColor.a / 255.0f));
@@ -620,6 +658,39 @@ static void DrawHintList() {
             addHint(hintKey, typeGroupKey(type), typeGroupName(type), RCAREA_INVALID);
         } else {
             addHint(hintKey, RCAREA_INVALID, otherHintsName, RCAREA_INVALID);
+        }
+    }
+
+    // House of Skulltula: what each family member promised, once they said it.
+    {
+        std::set<int> skulls;
+        {
+            std::lock_guard<std::mutex> lock(readHintsMutex);
+            skulls = seenSkulltulaRewards;
+        }
+        static const std::map<int, RandomizerCheck> skullChecks = {
+            { 10, RC_KAK_10_GOLD_SKULLTULA_REWARD }, { 20, RC_KAK_20_GOLD_SKULLTULA_REWARD },
+            { 30, RC_KAK_30_GOLD_SKULLTULA_REWARD }, { 40, RC_KAK_40_GOLD_SKULLTULA_REWARD },
+            { 50, RC_KAK_50_GOLD_SKULLTULA_REWARD },
+        };
+        for (int count : skulls) {
+            auto check = skullChecks.find(count);
+            if (check == skullChecks.end()) {
+                continue;
+            }
+            auto location = ctx->GetItemLocation(check->second);
+            HintGroup& group = groups[static_cast<size_t>(1) << 30];
+            if (group.name.empty()) {
+                group.name = skulltulaHouseLabel.GetForCurrentLanguage(MF_CLEAN);
+            }
+            group.total++;
+            group.read++;
+            Rando::Item& item = Rando::StaticData::RetrieveItem(location->GetPlacedRandomizerGet());
+            HintEntry entry{ RH_NONE, std::to_string(count) + " Skulltulas" };
+            entry.sortRank = count;
+            entry.found = location->HasObtained();
+            entry.customText = item.GetHint().GetHintMessage().GetForCurrentLanguage(MF_CLEAN);
+            group.entries.push_back(entry);
         }
     }
 

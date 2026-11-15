@@ -16,6 +16,8 @@ namespace HintTracker {
 void DrawEmbedded();
 // True once the player has seen this hint (gossip stone, altar, ...).
 bool IsHintReadByPlayer(RandomizerHint hintKey);
+// The House of Skulltula family member for `count` tokens told the player their reward.
+void MarkSkulltulaRewardSeen(uint8_t count);
 
 class HintTrackerSettingsWindow final : public Ship::GuiWindow {
   public:

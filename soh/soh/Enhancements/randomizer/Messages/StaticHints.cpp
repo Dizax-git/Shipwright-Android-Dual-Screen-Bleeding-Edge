@@ -11,6 +11,7 @@
 #include <soh/OTRGlobals.h>
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/ShipInit.hpp"
+#include "soh/Enhancements/randomizer/randomizer_hint_tracker.h"
 
 extern "C" {
 #include "z64scene.h"
@@ -140,6 +141,7 @@ void BuildSkulltulaPeopleMessage(uint16_t* textId, bool* loadFromMessageTable) {
     } else {
         return;
     }
+    HintTracker::MarkSkulltulaRewardSeen(count);
     Rando::Item& item = Rando::StaticData::RetrieveItem(RAND_GET_ITEM_LOC(rc)->GetPlacedRandomizerGet());
     CustomMessage msg = CustomMessage("Yeaaarrgh! I'm cursed!!^Please save me by destroying %y[[d]] Spiders of the "
                                       "Curse%w and I will give you [[color]][[1]]%w!",
