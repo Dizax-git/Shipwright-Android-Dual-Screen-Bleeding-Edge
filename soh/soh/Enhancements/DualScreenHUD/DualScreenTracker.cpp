@@ -328,7 +328,7 @@ void DrawTrackerUi() {
         ImFont* font = HugeFont();
         const float textSize = 25.0f;
         const ImVec2 barMin = ImGui::GetCursorScreenPos();
-        const float barHeight = textSize + 22.0f;
+        const float barHeight = textSize + 16.0f;
         const ImVec2 barMax(barMin.x + ImGui::GetContentRegionAvail().x, barMin.y + barHeight);
         DrawTextbox(drawList, barMin, barMax, IM_COL32(0, 0, 0, 200));
 
@@ -355,7 +355,7 @@ void DrawTrackerUi() {
 
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
     const float tabWidth = (ImGui::GetContentRegionAvail().x - spacing) * 0.5f;
-    const float tabHeight = 50.0f;
+    const float tabHeight = 44.0f;
     DrawTabButton(Label("Items", "Gegenstaende", "Objets"), TAB_ITEMS, tabWidth, tabHeight);
     ImGui::SameLine();
     DrawTabButton(Label("Hints", "Hinweise", "Indices"), TAB_HINTS, tabWidth, tabHeight);
@@ -369,7 +369,9 @@ void DrawTrackerUi() {
         ImGui::PopFont();
         ImGui::EndChild();
     } else {
-        ImGui::BeginChild("##DualScreenItems", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None);
+        // Everything fits on one page: no scrollbar on the item tracker.
+        ImGui::BeginChild("##DualScreenItems", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         ItemTracker_DrawEmbedded();
         ImGui::EndChild();
     }

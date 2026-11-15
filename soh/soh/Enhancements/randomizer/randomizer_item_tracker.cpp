@@ -2510,15 +2510,17 @@ static void DrawEmbeddedGrid(const char* id, const std::vector<ItemTrackerItem>&
     }
     const float iconSize = static_cast<float>(CVarGetInteger(CVAR_TRACKER_ITEM("IconSize"), 36));
     const float iconSpacing = sEmbeddedSpacing;
+    // Tighter rows than columns so both panels fit the bottom screen's height.
+    const float rowSpacing = std::max(6.0f, iconSpacing - 4.0f);
     const size_t rows = (items.size() + columns - 1) / columns;
-    const ImVec2 size(columns * (iconSize + iconSpacing) + 8.0f, rows * (iconSize + iconSpacing) + 8.0f);
+    const ImVec2 size(columns * (iconSize + iconSpacing) + 8.0f, rows * (iconSize + rowSpacing) + 8.0f);
     ImGui::BeginChild(id, size, ImGuiChildFlags_None,
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
                           ImGuiWindowFlags_NoBackground);
     for (size_t i = 0; i < items.size(); i++) {
         const size_t row = i / columns;
         const size_t column = i % columns;
-        ImGui::SetCursorPos(ImVec2(column * (iconSize + iconSpacing) + 4.0f, row * (iconSize + iconSpacing) + 4.0f));
+        ImGui::SetCursorPos(ImVec2(column * (iconSize + iconSpacing) + 4.0f, row * (iconSize + rowSpacing) + 4.0f));
         const ImVec2 iconPos = ImGui::GetCursorScreenPos();
         items[i].drawFunc(items[i]);
         if (items[i].kind == ITEM_KIND_QUEST) {
