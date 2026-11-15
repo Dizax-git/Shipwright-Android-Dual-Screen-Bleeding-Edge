@@ -375,10 +375,36 @@ function Invoke-SohWindowsAndroidBuild {
         $ndkProperty = $ndk.Replace('\', '/')
         [IO.File]::WriteAllText($localProperties, "sdk.dir=$sdkProperty`nndk.dir=$ndkProperty`n", [Text.UTF8Encoding]::new($false))
         $env:GRADLE_USER_HOME = Join-Path $working 'gradle-home'
+        # Optional compile cache for the arm64 native build (set by CI).
+        # CMake picks the launcher up from the environment; only this step uses it.
+        $ccache = $null
+        if ($env:SOH_ANDROID_CCACHE) {
+            $ccache = (Get-Command $env:SOH_ANDROID_CCACHE -ErrorAction Stop).Source
+            $env:CMAKE_C_COMPILER_LAUNCHER = $ccache
+            $env:CMAKE_CXX_COMPILER_LAUNCHER = $ccache
+            $env:CCACHE_BASEDIR = $working
+            $env:CCACHE_NOHASHDIR = 'true'
+            # The NDK is reinstalled on every run: identify it by version, not by file date.
+            $env:CCACHE_COMPILERCHECK = "string:ndk-$script:NdkVersion"
+            $env:CCACHE_SLOPPINESS = 'include_file_mtime,include_file_ctime,time_macros'
+            & $ccache --zero-stats | Out-Null
+            Write-Host "ccache enabled for the Android native build: $ccache"
+        }
         $gradle = Join-Path $source 'Android\gradlew.bat'
-        $null = Invoke-SohProcess -FilePath $gradle -Arguments @(
-            '--no-daemon', ':app:testReleaseUnitTest', ':app:assembleRelease'
-        ) -WorkingDirectory (Join-Path $source 'Android')
+        try {
+            $null = Invoke-SohProcess -FilePath $gradle -Arguments @(
+                '--no-daemon', ':app:testReleaseUnitTest', ':app:assembleRelease'
+            ) -WorkingDirectory (Join-Path $source 'Android')
+        }
+        finally {
+            if ($ccache) {
+                & $ccache --show-stats | Out-Host
+                foreach ($name in @('CMAKE_C_COMPILER_LAUNCHER', 'CMAKE_CXX_COMPILER_LAUNCHER', 'CCACHE_BASEDIR',
+                        'CCACHE_NOHASHDIR', 'CCACHE_COMPILERCHECK', 'CCACHE_SLOPPINESS')) {
+                    Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue
+                }
+            }
+        }
 
         $candidateDirectory = Join-Path $source 'Android\app\build\outputs\apk\release'
         $candidates = @(Get-ChildItem -LiteralPath $candidateDirectory -Filter '*.apk' -File)

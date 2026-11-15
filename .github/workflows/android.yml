@@ -36,8 +36,22 @@ jobs:
         run: |
           sdkmanager 'platforms;android-31' 'build-tools;35.0.0' 'ndk;29.0.14206865' 'cmake;3.31.5'
 
+      # Compile cache for the arm64 build: only the C/C++ files that changed are
+      # recompiled; everything else comes back from the cache of earlier runs.
+      - name: Restore the Android compile cache (ccache)
+        uses: hendrikmuhs/ccache-action@v1.2.23
+        with:
+          variant: ccache
+          max-size: "3G"
+          key: android-arm64-ccache-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            android-arm64-ccache-${{ github.ref_name }}-
+            android-arm64-ccache-
+
       - name: Build and test the unsigned Android candidate
         shell: pwsh
+        env:
+          SOH_ANDROID_CCACHE: ccache
         run: |
           ./scripts/android/Build-WindowsAndroidRelease.ps1 `
             -RepositoryRoot $env:GITHUB_WORKSPACE `
