@@ -401,19 +401,12 @@ void DrawHeader() {
         ShadowText(dl, big, 18.0f, ImVec2(min.x + 4.0f, min.y + 3.0f), kColText, left);
         char right[64];
         const bool logic = CheckTracker::IsLogicShown();
-        std::snprintf(right, sizeof(right), "%s %d %s", logic ? ICON_FA_ARROW_CIRCLE_RIGHT : ICON_FA_CIRCLE_O, todo,
-                      logic ? Label("to do", "offen", "à faire") : Label("left", "offen", "restants"));
-        float rightW = TextWidth(big, 18.0f, right);
+        // Both ages together: the list of a zone tells them apart (colour).
+        std::snprintf(right, sizeof(right), "%s %d %s", logic ? ICON_FA_ARROW_CIRCLE_RIGHT : ICON_FA_CIRCLE_O,
+                      todo + otherAge, logic ? Label("to do", "offen", "à faire") : Label("left", "offen", "restants"));
+        const float rightW = TextWidth(big, 18.0f, right);
         ShadowText(dl, big, 18.0f, ImVec2(min.x + width - rightW - 4.0f, min.y + 3.0f), logic ? kColTodo : kColText,
                    right);
-        if (logic && otherAge > 0) {
-            // What the other age could do, in its own colour, left of "to do".
-            char age[32];
-            std::snprintf(age, sizeof(age), "%s %d", ICON_FA_HOURGLASS_HALF, otherAge);
-            const float ageW = TextWidth(big, 18.0f, age);
-            ShadowText(dl, big, 18.0f, ImVec2(min.x + width - rightW - ageW - 18.0f, min.y + 3.0f), kColOtherAge, age);
-            rightW += ageW + 14.0f;
-        }
         // Progress bar between the two labels.
         const float barX0 = min.x + TextWidth(big, 18.0f, left) + 18.0f;
         const float barX1 = min.x + width - rightW - 18.0f;
@@ -458,11 +451,13 @@ void DrawHeader() {
             std::snprintf(badge, sizeof(badge), "%s", ICON_FA_CHECK);
             badgeColor = kColDone;
         } else {
+            // Same counter as "to do" above (both ages), with its arrow; in
+            // lavender when only the other age has something to do here.
             if (stats.todo == 0 && stats.otherAge > 0) {
-                std::snprintf(badge, sizeof(badge), "%s%d", ICON_FA_HOURGLASS_HALF, stats.otherAge);
+                std::snprintf(badge, sizeof(badge), "%s %d", ICON_FA_HOURGLASS_HALF, stats.otherAge);
                 badgeColor = kColOtherAge;
             } else {
-                std::snprintf(badge, sizeof(badge), "%d", stats.todo);
+                std::snprintf(badge, sizeof(badge), "%s %d", ICON_FA_ARROW_CIRCLE_RIGHT, stats.todo + stats.otherAge);
                 if (stats.todo == 0) {
                     badgeColor = kColLocked;
                 }
@@ -529,7 +524,7 @@ void DrawAreaCard(const RegionDef& region, const AreaDef& def, float w, float h)
     } else if (!logic) {
         std::snprintf(status, sizeof(status), "%d %s", stats.todo, Label("left", "offen", "restants"));
     } else if (stats.todo > 0) {
-        std::snprintf(status, sizeof(status), "%s %d %s", ICON_FA_ARROW_CIRCLE_RIGHT, stats.todo,
+        std::snprintf(status, sizeof(status), "%s %d %s", ICON_FA_ARROW_CIRCLE_RIGHT, stats.todo + stats.otherAge,
                       Label("to do", "offen", "à faire"));
         statusColor = kColTodo;
     } else if (stats.otherAge > 0) {
@@ -542,10 +537,11 @@ void DrawAreaCard(const RegionDef& region, const AreaDef& def, float w, float h)
     }
     ShadowText(dl, big, 16.0f, ImVec2(min.x + 14.0f, min.y + 32.0f), statusColor, status);
     if (logic && stats.spoiled && !complete && stats.todo > 0 && stats.otherAge > 0) {
-        // Blue first, then what the other age adds, in lavender.
-        char age[24];
-        std::snprintf(age, sizeof(age), "%s %d", ICON_FA_HOURGLASS_HALF, stats.otherAge);
-        ShadowText(dl, big, 16.0f, ImVec2(min.x + 14.0f + TextWidth(big, 16.0f, status) + 12.0f, min.y + 32.0f),
+        // How many of them need the other age, in lavender.
+        char age[32];
+        std::snprintf(age, sizeof(age), "%s %s %d", Label("incl.", "davon", "dont"), ICON_FA_HOURGLASS_HALF,
+                      stats.otherAge);
+        ShadowText(dl, big, 16.0f, ImVec2(min.x + 14.0f + TextWidth(big, 16.0f, status) + 10.0f, min.y + 32.0f),
                    kColOtherAge, age);
     }
     float tagRight = max.x - 8.0f;
