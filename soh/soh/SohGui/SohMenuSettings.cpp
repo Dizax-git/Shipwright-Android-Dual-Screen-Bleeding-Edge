@@ -483,12 +483,24 @@ void SohMenu::AddMenuSettings() {
         .CVar(CVAR_SETTING("Gyro.Deadband"))
         .RaceDisable(false)
         .Options(FloatSliderOptions().Format("%.1f").Min(0.0f).Max(10.0f).Step(0.1f).DefaultValue(0.6f).Tooltip(
-            "Movements slower than this are ignored. Raise it if the aim drifts while the console is still."));
+            "Movements slower than this are scaled down (not cut). Raise it if the aim drifts while the console "
+            "is still."));
+    AddWidget(path, "Gyro Player Space (yaw + roll)", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("Gyro.PlayerSpace"))
+        .RaceDisable(false)
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Aim left/right by turning the console around the room's vertical, whether you twist or tilt it "
+            "(like Steam Input / JoyShockMapper). Off = twist only."));
+    AddWidget(path, "Gyro Small-Motion Smoothing (degrees per second)", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("Gyro.SmoothThreshold"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().Format("%.1f").Min(0.0f).Max(20.0f).Step(0.5f).DefaultValue(4.0f).Tooltip(
+            "Only movements slower than this are smoothed (steadier fine aim); faster ones stay instant. 0 = off."));
     AddWidget(path, "Gyro Smoothing", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_SETTING("Gyro.Smoothing"))
         .RaceDisable(false)
         .Options(FloatSliderOptions().IsPercentage().Min(0.0f).Max(0.9f).Step(0.05f).DefaultValue(0.0f).Tooltip(
-            "Evens out shaky hands, at the cost of a little delay. 0% = raw gyro."));
+            "Smooths every movement, at the cost of delay. Usually 0%: the small-motion smoothing is enough."));
     path.column = SECTION_COLUMN_1;
 
     // Input Viewer

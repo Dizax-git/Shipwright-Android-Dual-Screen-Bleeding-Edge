@@ -12591,18 +12591,42 @@ static void Player_GetGyroAim(PlayState* play, f32* outPitch, f32* outYaw) {
     static u32 sLastFrame = 0xFFFFFFFF;
     static f32 sPitch = 0.0f;
     static f32 sYaw = 0.0f;
+    // Last game frames of input, for the small-motion smoothing below.
+    static f32 sHistPitch[3] = { 0.0f, 0.0f, 0.0f };
+    static f32 sHistYaw[3] = { 0.0f, 0.0f, 0.0f };
+    static s32 sHistIndex = 0;
     if (play->gameplayFrames != sLastFrame) {
         sLastFrame = play->gameplayFrames;
+        // Average rate (rad/s) over the last game frame (see SDLGyroMapping).
         f32 pitch = sControlInput->cur.gyro_x;
         f32 yaw = sControlInput->cur.gyro_y;
-        // Deadband in degrees per second (the stock threshold was 0.01 rad/s).
+        f32 magnitude = sqrtf(pitch * pitch + yaw * yaw);
+        // Soft deadband ("tightening"): below the threshold the motion is scaled
+        // down instead of cut, so slow precise movements still move the aim while
+        // the sensor noise of a still console stays negligible.
         f32 deadband = CVarGetFloat(CVAR_SETTING("Gyro.Deadband"), 0.6f) * (M_PI / 180.0f);
-        if (fabsf(pitch) < deadband) {
-            pitch = 0.0f;
+        if (deadband > 0.0f && magnitude < deadband) {
+            f32 scale = magnitude / deadband;
+            pitch *= scale;
+            yaw *= scale;
+            magnitude *= scale;
         }
-        if (fabsf(yaw) < deadband) {
-            yaw = 0.0f;
+        // Tiered smoothing: only the smallest movements (fine aim, hand tremor)
+        // are averaged over the last frames; bigger ones pass straight through,
+        // without added lag.
+        sHistPitch[sHistIndex] = pitch;
+        sHistYaw[sHistIndex] = yaw;
+        sHistIndex = (sHistIndex + 1) % 3;
+        f32 avgPitch = (sHistPitch[0] + sHistPitch[1] + sHistPitch[2]) / 3.0f;
+        f32 avgYaw = (sHistYaw[0] + sHistYaw[1] + sHistYaw[2]) / 3.0f;
+        f32 smoothThreshold = CVarGetFloat(CVAR_SETTING("Gyro.SmoothThreshold"), 4.0f) * (M_PI / 180.0f);
+        f32 direct = 1.0f;
+        if (smoothThreshold > 0.0f) {
+            direct = CLAMP((magnitude - smoothThreshold * 0.5f) / (smoothThreshold * 0.5f), 0.0f, 1.0f);
         }
+        pitch = pitch * direct + avgPitch * (1.0f - direct);
+        yaw = yaw * direct + avgYaw * (1.0f - direct);
+
         pitch *= CVarGetFloat(CVAR_SETTING("Gyro.SensitivityY"), 1.0f) *
                  (CVarGetInteger(CVAR_SETTING("Gyro.InvertY"), 0) ? -1.0f : 1.0f);
         yaw *= CVarGetFloat(CVAR_SETTING("Gyro.SensitivityX"), 1.0f) *

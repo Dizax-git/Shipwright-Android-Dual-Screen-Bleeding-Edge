@@ -1302,8 +1302,25 @@ void SohInputEditorWindow::DrawGyroSection(uint8_t port) {
                             .Step(0.1f)
                             .DefaultValue(0.6f)
                             .ShowButtons(true)
-                            .Tooltip("Movements slower than this are ignored. Raise it if the aim drifts while "
-                                     "the console is still, lower it if small motions are missed."));
+                            .Tooltip("Movements slower than this are scaled down (not cut). Raise it if the aim "
+                                     "drifts while the console is still, lower it if small motions feel sluggish."));
+        CVarCheckbox("Player Space (yaw + roll)", CVAR_SETTING("Gyro.PlayerSpace"),
+                     CheckboxOptions()
+                         .Color(THEME_COLOR)
+                         .DefaultValue(true)
+                         .Tooltip("Aim left/right by turning the console around the room's vertical, whether you "
+                                  "twist or tilt it (like Steam Input / JoyShockMapper). Off = twist only."));
+        CVarSliderFloat("Small-Motion Smoothing (degrees per second)", CVAR_SETTING("Gyro.SmoothThreshold"),
+                        FloatSliderOptions()
+                            .Color(THEME_COLOR)
+                            .Format("%.1f")
+                            .Min(0.0f)
+                            .Max(20.0f)
+                            .Step(0.5f)
+                            .DefaultValue(4.0f)
+                            .ShowButtons(true)
+                            .Tooltip("Only movements slower than this are smoothed (steadier fine aim); faster "
+                                     "ones stay instant. 0 = off."));
         CVarSliderFloat("Smoothing", CVAR_SETTING("Gyro.Smoothing"),
                         FloatSliderOptions()
                             .Color(THEME_COLOR)
@@ -1313,7 +1330,8 @@ void SohInputEditorWindow::DrawGyroSection(uint8_t port) {
                             .Step(0.05f)
                             .DefaultValue(0.0f)
                             .ShowButtons(true)
-                            .Tooltip("Evens out shaky hands, at the cost of a little delay. 0% = raw gyro."));
+                            .Tooltip("Smooths every movement, at the cost of delay. Usually 0%: the small-motion "
+                                     "smoothing above is enough."));
     } else {
         ImGui::AlignTextToFramePadding();
         ImGui::BulletText("Add gyro device");

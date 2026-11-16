@@ -1,51 +1,160 @@
 diff --git a/src/ship/controller/controldevice/controller/mapping/sdl/SDLGyroMapping.cpp b/src/ship/controller/controldevice/controller/mapping/sdl/SDLGyroMapping.cpp
-index 751e68b..5e668dc 100644
+index 751e68b..fd6280d 100644
 --- a/src/ship/controller/controldevice/controller/mapping/sdl/SDLGyroMapping.cpp
 +++ b/src/ship/controller/controldevice/controller/mapping/sdl/SDLGyroMapping.cpp
-@@ -8,6 +8,35 @@
+@@ -7,7 +7,144 @@
+ #include "ship/utils/StringHelper.h"
  #include "ship/controller/controldeck/ControlDeck.h"
  
++#ifdef __ANDROID__
++#include <algorithm>
++#include <cmath>
++#include <mutex>
++#endif
++
  namespace Ship {
 +#ifdef __ANDROID__
 +// Handhelds such as the AYN Thor expose their gyroscope as an Android device sensor,
 +// not as a sensor of the built-in game controller. Fall back to it when no gamepad has one.
-+static SDL_Sensor* GetAndroidDeviceGyro() {
-+    static SDL_Sensor* sSensor = nullptr;
-+    static bool sTried = false;
-+    if (!sTried) {
-+        sTried = true;
++//
++// The sensor sends ~60 samples a second but the game reads the pad once per game
++// frame (20 Hz in OoT): reading only the latest sample threw two thirds of the
++// motion away and kept its noise. Every sample is collected (SDL_SENSORUPDATE
++// event watch) and the game gets their average since its previous read.
++// The accelerometer gives the gravity direction for "player space" aiming.
++namespace {
++struct AndroidMotion {
++    std::mutex mutex;
++    SDL_SensorID gyroId = -1;
++    SDL_SensorID accelId = -1;
++    double sum[3] = { 0.0, 0.0, 0.0 };
++    int count = 0;
++    float last[3] = { 0.0f, 0.0f, 0.0f };
++    bool hasLast = false;
++    float slow[3] = { 0.0f, 0.0f, 0.0f }; // ~1 s running average, for Recalibrate
++    bool hasSlow = false;
++    float grav[3] = { 0.0f, 0.0f, 0.0f }; // low-passed accelerometer (points up)
++    bool hasGrav = false;
++};
++AndroidMotion sMotion;
++SDL_Sensor* sGyroSensor = nullptr;
++bool sMotionTried = false;
++
++int SDLCALL MotionEventWatch(void*, SDL_Event* event) {
++    if (event->type != SDL_SENSORUPDATE) {
++        return 0;
++    }
++    const float* d = event->sensor.data;
++    std::lock_guard<std::mutex> lock(sMotion.mutex);
++    if (event->sensor.which == sMotion.gyroId) {
++        for (int i = 0; i < 3; i++) {
++            sMotion.sum[i] += d[i];
++            sMotion.slow[i] = sMotion.hasSlow ? sMotion.slow[i] + (d[i] - sMotion.slow[i]) / 60.0f : d[i];
++        }
++        sMotion.count++;
++        sMotion.hasSlow = true;
++    } else if (event->sensor.which == sMotion.accelId) {
++        for (int i = 0; i < 3; i++) {
++            sMotion.grav[i] = sMotion.hasGrav ? sMotion.grav[i] + (d[i] - sMotion.grav[i]) * 0.1f : d[i];
++        }
++        sMotion.hasGrav = true;
++    }
++    return 0;
++}
++
++SDL_Sensor* GetAndroidDeviceGyro() {
++    if (!sMotionTried) {
++        sMotionTried = true;
 +        if (SDL_WasInit(SDL_INIT_SENSOR) == 0 && SDL_InitSubSystem(SDL_INIT_SENSOR) != 0) {
 +            SPDLOG_WARN("Gyro: could not init SDL sensors: {}", SDL_GetError());
 +            return nullptr;
 +        }
++        SDL_Sensor* accel = nullptr;
 +        for (int i = 0; i < SDL_NumSensors(); i++) {
-+            if (SDL_SensorGetDeviceType(i) == SDL_SENSOR_GYRO) {
-+                sSensor = SDL_SensorOpen(i);
++            const SDL_SensorType type = SDL_SensorGetDeviceType(i);
++            if (type == SDL_SENSOR_GYRO && sGyroSensor == nullptr) {
++                sGyroSensor = SDL_SensorOpen(i);
 +                SPDLOG_INFO("Gyro: using Android device sensor '{}'", SDL_SensorGetDeviceName(i));
-+                break;
++            } else if (type == SDL_SENSOR_ACCEL && accel == nullptr) {
++                accel = SDL_SensorOpen(i);
++                SPDLOG_INFO("Gyro: gravity from Android device sensor '{}'", SDL_SensorGetDeviceName(i));
 +            }
 +        }
++        {
++            std::lock_guard<std::mutex> lock(sMotion.mutex);
++            sMotion.gyroId = sGyroSensor != nullptr ? SDL_SensorGetInstanceID(sGyroSensor) : -1;
++            sMotion.accelId = accel != nullptr ? SDL_SensorGetInstanceID(accel) : -1;
++        }
++        if (sGyroSensor != nullptr) {
++            SDL_EventState(SDL_SENSORUPDATE, SDL_ENABLE);
++            SDL_AddEventWatch(MotionEventWatch, nullptr);
++        }
 +    }
-+    return sSensor;
++    return sGyroSensor;
 +}
 +
-+static bool ReadAndroidDeviceGyro(float* gyroData) {
++// Average angular rate (rad/s) since the previous read, and the gravity direction
++// (unit vector, pointing up) when known.
++bool ReadAndroidDeviceGyro(float* gyroData, float* gravity = nullptr, bool* hasGravity = nullptr) {
 +    SDL_Sensor* sensor = GetAndroidDeviceGyro();
-+    return sensor != nullptr && SDL_SensorGetData(sensor, gyroData, 3) == 0;
++    if (sensor == nullptr) {
++        return false;
++    }
++    std::lock_guard<std::mutex> lock(sMotion.mutex);
++    if (sMotion.count > 0) {
++        for (int i = 0; i < 3; i++) {
++            sMotion.last[i] = static_cast<float>(sMotion.sum[i] / sMotion.count);
++            sMotion.sum[i] = 0.0;
++        }
++        sMotion.count = 0;
++        sMotion.hasLast = true;
++    }
++    if (sMotion.hasLast) {
++        for (int i = 0; i < 3; i++) {
++            gyroData[i] = sMotion.last[i];
++        }
++    } else if (SDL_SensorGetData(sensor, gyroData, 3) != 0) {
++        return false;
++    }
++    if (gravity != nullptr && hasGravity != nullptr) {
++        const float len = std::sqrt(sMotion.grav[0] * sMotion.grav[0] + sMotion.grav[1] * sMotion.grav[1] +
++                                    sMotion.grav[2] * sMotion.grav[2]);
++        *hasGravity = sMotion.hasGrav && len > 1.0f;
++        for (int i = 0; i < 3; i++) {
++            gravity[i] = *hasGravity ? sMotion.grav[i] / len : 0.0f;
++        }
++    }
++    return true;
 +}
++
++// Rest value of the gyro over the last second (for Recalibrate).
++bool ReadAndroidDeviceGyroRest(float* gyroData) {
++    if (GetAndroidDeviceGyro() == nullptr) {
++        return false;
++    }
++    std::lock_guard<std::mutex> lock(sMotion.mutex);
++    if (!sMotion.hasSlow) {
++        return false;
++    }
++    for (int i = 0; i < 3; i++) {
++        gyroData[i] = sMotion.slow[i];
++    }
++    return true;
++}
++} // namespace
 +#endif
 +
  SDLGyroMapping::SDLGyroMapping(uint8_t portIndex, float sensitivity, float neutralPitch, float neutralYaw,
                                 float neutralRoll)
      : ControllerInputMapping(PhysicalDeviceType::SDLGamepad),
-@@ -35,6 +64,18 @@ void SDLGyroMapping::Recalibrate() {
+@@ -35,6 +172,18 @@ void SDLGyroMapping::Recalibrate() {
          return;
      }
  
 +#ifdef __ANDROID__
 +    {
 +        float gyroData[3];
-+        if (ReadAndroidDeviceGyro(gyroData)) {
++        if (ReadAndroidDeviceGyroRest(gyroData) || ReadAndroidDeviceGyro(gyroData)) {
 +            mNeutralPitch = gyroData[0];
 +            mNeutralYaw = gyroData[1];
 +            mNeutralRoll = gyroData[2];
@@ -57,16 +166,31 @@ index 751e68b..5e668dc 100644
      // if we didn't find a gyro device zero everything out
      mNeutralPitch = 0;
      mNeutralYaw = 0;
-@@ -66,6 +107,17 @@ void SDLGyroMapping::UpdatePad(float& x, float& y) {
+@@ -66,6 +215,32 @@ void SDLGyroMapping::UpdatePad(float& x, float& y) {
          return;
      }
  
 +#ifdef __ANDROID__
 +    {
 +        float gyroData[3];
-+        if (ReadAndroidDeviceGyro(gyroData)) {
-+            x = (gyroData[0] - mNeutralPitch) * mSensitivity;
-+            y = (gyroData[1] - mNeutralYaw) * mSensitivity;
++        float gravity[3];
++        bool hasGravity = false;
++        if (ReadAndroidDeviceGyro(gyroData, gravity, &hasGravity)) {
++            const float pitch = gyroData[0] - mNeutralPitch;
++            const float localYaw = gyroData[1] - mNeutralYaw;
++            const float roll = gyroData[2] - mNeutralRoll;
++            float yaw = localYaw;
++            // "Player space" (JoyShockMapper / Steam Input): turning the handheld
++            // around the vertical of the room aims left/right, whether the hands
++            // yaw or roll it, as a held console naturally mixes both.
++            if (hasGravity && Ship::Context::GetRawInstance()->GetConsoleVariables()->GetInteger(
++                                  "gSettings.Gyro.PlayerSpace", 1) != 0) {
++                const float worldYaw = localYaw * gravity[1] + roll * gravity[2];
++                const float yawRollLength = std::sqrt(localYaw * localYaw + roll * roll);
++                yaw = std::copysign(std::min(std::fabs(worldYaw) * 1.41f, yawRollLength), worldYaw);
++            }
++            x = pitch * mSensitivity;
++            y = yaw * mSensitivity;
 +            return;
 +        }
 +    }
