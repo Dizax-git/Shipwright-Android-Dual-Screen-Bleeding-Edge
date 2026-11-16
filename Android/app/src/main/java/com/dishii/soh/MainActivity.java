@@ -613,13 +613,24 @@ public class MainActivity extends SDLActivity{
         super.onPause();
     }
 
+    // Thor: "Quit" in the game menu must really close the game, not leave it
+    // running in the background behind the launcher (Cocoon).
+    @Override
+    public void finish() {
+        super.finishAndRemoveTask();
+    }
+
     @Override
     protected void onDestroy() {
         if (dualScreenManager != null) {
             dualScreenManager.stop();
         }
         romImportExecutor.shutdown();
+        boolean quitting = isFinishing();
         super.onDestroy();
+        if (quitting) {
+            android.os.Process.killProcess(android.os.Process.myPid());
+        }
     }
 
     @Override

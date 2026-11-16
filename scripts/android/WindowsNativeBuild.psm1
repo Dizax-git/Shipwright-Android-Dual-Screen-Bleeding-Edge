@@ -386,7 +386,7 @@ function Invoke-SohWindowsAndroidBuild {
             $env:CCACHE_NOHASHDIR = 'true'
             # The NDK is reinstalled on every run: identify it by version, not by file date.
             $env:CCACHE_COMPILERCHECK = "string:ndk-$script:NdkVersion"
-            $env:CCACHE_SLOPPINESS = 'include_file_mtime,include_file_ctime,time_macros'
+            $env:CCACHE_SLOPPINESS = 'include_file_mtime,include_file_ctime,time_macros,pch_defines'
             & $ccache --zero-stats | Out-Null
             Write-Host "ccache enabled for the Android native build: $ccache"
         }

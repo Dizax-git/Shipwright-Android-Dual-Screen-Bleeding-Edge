@@ -465,3 +465,6 @@ local.properties
 # Retired extractor submodule checkouts are not part of the Torch-based build.
 /OTRExporter/
 /ZAPDTR/
+
+# ccache directory created in the workspace by hendrikmuhs/ccache-action (CI)
+.ccache/

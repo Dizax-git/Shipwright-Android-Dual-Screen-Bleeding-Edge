@@ -44,9 +44,11 @@ jobs:
           variant: ccache
           max-size: "3G"
           key: android-arm64-ccache-${{ github.ref_name }}-${{ github.sha }}
+          # No trailing "-": the action appends its own (see the project note
+          # "Thor - compilation des portages"), a trailing dash never matches.
           restore-keys: |
-            android-arm64-ccache-${{ github.ref_name }}-
-            android-arm64-ccache-
+            android-arm64-ccache-${{ github.ref_name }}
+            android-arm64-ccache
 
       - name: Build and test the unsigned Android candidate
         shell: pwsh
