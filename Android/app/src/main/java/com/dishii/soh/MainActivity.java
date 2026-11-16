@@ -42,6 +42,9 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.view.inputmethod.InputMethodManager;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import java.util.Arrays;
@@ -55,6 +58,40 @@ import android.os.VibrationEffect;
 
 //This class is the main SDLActivity and just sets up a bunch of default files
 public class MainActivity extends SDLActivity{
+
+    // Called by the menu's search field after an explicit tap (Menu.cpp,
+    // AndroidRequestSearchKeyboard). SDL2 keeps its text-input state even if
+    // Back dismissed the keyboard, so SDL_StartTextInput() alone does not always
+    // reopen it. Same as the 2 Ship (Majora) Thor build.
+    public void requestSearchKeyboardFromNative() {
+        runOnUiThread(() -> {
+            View editor = SDLActivity.mTextEdit;
+            if (editor == null) {
+                // SDL's editor does not exist yet: SDL creates it and opens the keyboard.
+                SDLActivity.showTextInput(0, 0, 1, 1);
+                return;
+            }
+
+            editor.setVisibility(View.VISIBLE);
+            editor.requestFocus();
+            editor.post(() -> {
+                if (!editor.hasFocus() || !editor.hasWindowFocus()) {
+                    return;
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    WindowInsetsController controller = editor.getWindowInsetsController();
+                    if (controller != null) {
+                        controller.show(WindowInsets.Type.ime());
+                        return;
+                    }
+                }
+                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.showSoftInput(editor, 0);
+                }
+            });
+        });
+    }
 
     SharedPreferences preferences;
     private static final CountDownLatch setupLatch = new CountDownLatch(1);

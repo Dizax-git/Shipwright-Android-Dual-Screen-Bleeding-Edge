@@ -6,6 +6,7 @@
 #include <soh/GameVersions.h>
 #include "soh/ResourceManagerHelpers.h"
 #include "UIWidgets.hpp"
+#include "AndroidMenuStyle.h"
 #include <ship/controller/controldeck/ControlDeck.h>
 #include <ship/Context.h>
 
@@ -162,6 +163,20 @@ void SohMenu::AddMenuSettings() {
         .RaceDisable(false)
         .Options(FloatSliderOptions().DefaultValue(0.85f).IsPercentage().Tooltip(
             "Sets the opacity of the background of the port menu."));
+#if defined(__ANDROID__)
+    AddWidget(path, "Menu Scale", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("Menu.AndroidScale"))
+        .RaceDisable(false)
+        .Callback([](WidgetInfo& info) {
+            AndroidMenuStyle::Apply(CVarGetFloat(CVAR_SETTING("Menu.AndroidScale"), AndroidMenuStyle::DefaultScale));
+        })
+        .Options(FloatSliderOptions()
+                     .DefaultValue(AndroidMenuStyle::DefaultScale)
+                     .Min(1.0f)
+                     .Max(3.0f)
+                     .Step(0.05f)
+                     .Format("%.2fx")); // No tooltip: it would cover the slider under the finger.
+#endif
 
     AddWidget(path, "General Settings", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Cursor Always Visible", WIDGET_CVAR_CHECKBOX)
@@ -257,6 +272,7 @@ void SohMenu::AddMenuSettings() {
         .RaceDisable(false)
         .Options(CheckboxOptions().Tooltip("Disable the heat haze distortion effect in Death Mountain / Fire Temple."));
     AddWidget(path, "EXPERIMENTAL", WIDGET_SEPARATOR_TEXT).Options(TextOptions().Color(Colors::Orange));
+#if !defined(__ANDROID__) // Android: "Menu Scale" slider in Menu Settings instead.
     AddWidget(path, "ImGui Menu Scaling", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_SETTING("ImGuiScale"))
         .RaceDisable(false)
@@ -267,6 +283,7 @@ void SohMenu::AddMenuSettings() {
                      .ComponentAlignment(ComponentAlignments::Right)
                      .LabelPosition(LabelPositions::Far))
         .Callback([](WidgetInfo& info) { OTRGlobals::Instance->ScaleImGui(); });
+#endif
 
     // General - About
     path.column = SECTION_COLUMN_2;

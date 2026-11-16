@@ -45,6 +45,7 @@
 #include "frame_interpolation.h"
 #include "SohGui/SohMenu.h"
 #include "SohGui/SohGui.hpp"
+#include "SohGui/AndroidMenuStyle.h"
 #include "variables.h"
 #include "z64.h"
 #include "macros.h"
@@ -163,6 +164,8 @@ Color_RGB8 zoraColor = { 0x00, 0xEC, 0x64 };
 
 int32_t previousImGuiScaleIndex;
 float previousImGuiScale;
+// Glyph rasterization density for the next CreateFontWithSize() call (1 = normal).
+static float sFontRasterizerDensity = 1.0f;
 
 bool prevAltAssets = false;
 
@@ -335,10 +338,20 @@ OTRGlobals::OTRGlobals() {
 
         fontMonoSmall = CreateFontWithSize(14.0f, "fonts/Inconsolata-Regular.ttf");
         fontMono = CreateFontWithSize(16.0f, "fonts/Inconsolata-Regular.ttf");
+#ifdef __ANDROID__
+        // The Android menu draws this one at ~2.2x (Menu Scale x FontGlobalScale):
+        // rasterize it at 2x so the enlarged text stays sharp.
+        sFontRasterizerDensity = 2.0f;
+#endif
         fontMonoLarger = CreateFontWithSize(20.0f, "fonts/Inconsolata-Regular.ttf");
+        sFontRasterizerDensity = 1.0f;
         fontMonoLargest = CreateFontWithSize(24.0f, "fonts/Inconsolata-Regular.ttf");
         fontStandard = CreateFontWithSize(16.0f, "fonts/Montserrat-Regular.ttf");
+#ifdef __ANDROID__
+        sFontRasterizerDensity = 2.0f; // Android menu text and header (see above).
+#endif
         fontStandardLarger = CreateFontWithSize(20.0f, "fonts/Montserrat-Regular.ttf");
+        sFontRasterizerDensity = 1.0f;
         fontStandardLargest = CreateFontWithSize(24.0f, "fonts/Montserrat-Regular.ttf");
         fontJapanese = CreateFontWithSize(24.0f, "fonts/NotoSansJP-Regular.ttf", true);
 #ifdef __ANDROID__
@@ -1120,6 +1133,13 @@ OTRGlobals::~OTRGlobals() {
 }
 
 void OTRGlobals::ScaleImGui() {
+#ifdef __ANDROID__
+    // Thor: the menu uses its own touch style ("Menu Scale", Settings > General).
+    // libultraship already called ScaleAllSizes(2) at startup; AndroidMenuStyle
+    // sets absolute values, so it never compounds. "ImGui Menu Scaling" is hidden.
+    AndroidMenuStyle::Apply(CVarGetFloat(CVAR_SETTING("Menu.AndroidScale"), AndroidMenuStyle::DefaultScale));
+    return;
+#endif
     int32_t imGuiScaleIndex = CVarGetInteger(CVAR_SETTING("ImGuiScale"), defaultImGuiScale);
     if (imGuiScaleIndex == previousImGuiScaleIndex) {
         return;
@@ -2032,6 +2052,7 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
 std::map<std::string, SoundFontSample*> cachedCustomSFs;
 
 ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont) {
+    const float rasterizerDensity = sFontRasterizerDensity;
     auto mImGuiIo = &ImGui::GetIO();
     ImFont* font;
     if (fontPath == "") {
@@ -2050,6 +2071,7 @@ ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool is
             Ship::Context::GetRawInstance()->GetResourceManager()->LoadResource(fontPath, false, initData));
         ImFontConfig fontConf;
         fontConf.FontDataOwnedByAtlas = false;
+        fontConf.RasterizerDensity = rasterizerDensity;
         // Latin-1 alone lacks the French "œ" (cœur, sœur...) and typographic
         // punctuation used by translated texts: add Latin Extended-A and the
         // general punctuation block (’ “ ” … –).
@@ -2064,6 +2086,7 @@ ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool is
     ImFontConfig iconsConfig;
     iconsConfig.MergeMode = true;
     iconsConfig.PixelSnapH = true;
+    iconsConfig.RasterizerDensity = rasterizerDensity;
     iconsConfig.GlyphMinAdvanceX = iconFontSize;
     mImGuiIo->Fonts->AddFontFromMemoryCompressedBase85TTF(fontawesome_compressed_data_base85, iconFontSize,
                                                           &iconsConfig, sIconsRanges);
