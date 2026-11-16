@@ -2050,7 +2050,11 @@ ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool is
             Ship::Context::GetRawInstance()->GetResourceManager()->LoadResource(fontPath, false, initData));
         ImFontConfig fontConf;
         fontConf.FontDataOwnedByAtlas = false;
-        const ImWchar* glyph_ranges = isJapaneseFont ? mImGuiIo->Fonts->GetGlyphRangesJapanese() : nullptr;
+        // Latin-1 alone lacks the French "œ" (cœur, sœur...) and typographic
+        // punctuation used by translated texts: add Latin Extended-A and the
+        // general punctuation block (’ “ ” … –).
+        static const ImWchar sLatinRanges[] = { 0x0020, 0x00FF, 0x0100, 0x017F, 0x2010, 0x2027, 0x20AC, 0x20AC, 0 };
+        const ImWchar* glyph_ranges = isJapaneseFont ? mImGuiIo->Fonts->GetGlyphRangesJapanese() : sLatinRanges;
         font = mImGuiIo->Fonts->AddFontFromMemoryTTF(fontData->Data, static_cast<int>(fontData->DataSize), size,
                                                      &fontConf, glyph_ranges);
     }
