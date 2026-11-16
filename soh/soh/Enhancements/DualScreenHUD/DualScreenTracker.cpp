@@ -11,7 +11,11 @@
 #include "soh/Enhancements/randomizer/SeedContext.h"
 #include "soh/Enhancements/randomizer/location.h"
 #include "soh/Enhancements/randomizer/static_data.h"
+#include "soh/Enhancements/randomizer/hint.h"
+#include "soh/Enhancements/randomizer/randomizer_hint_tracker.h"
+#include "soh/ResourceManagerHelpers.h"
 #include <fast/Fast3dGui.h>
+#include <fast/resource/type/Texture.h>
 #include <ship/window/gui/IconsFontAwesome4.h>
 
 #include <imgui.h>
@@ -35,15 +39,13 @@ extern "C" {
 #include "assets/textures/icon_item_static/icon_item_static.h"
 #include "assets/textures/message_static/message_static.h"
 #include "assets/textures/parameter_static/parameter_static.h"
+#include "assets/textures/icon_item_field_static/icon_item_field_static.h"
 #include "variables.h"
 #include "macros.h"
 }
 
-// Defined in randomizer_item_tracker.cpp / randomizer_hint_tracker.cpp.
+// Defined in randomizer_item_tracker.cpp.
 void ItemTracker_DrawEmbedded();
-namespace HintTracker {
-void DrawEmbedded();
-}
 
 bool DualScreenTracker_IsEnabled(void) {
 #if defined(__ANDROID__)
@@ -310,7 +312,9 @@ void DrawTabButton(const char* label, TrackerTab tab, float width, float height,
     }
 }
 
+#include "DualScreenHintIndex.inc"
 #include "DualScreenChecks.inc"
+#include "DualScreenHintMap.inc"
 
 void DrawTrackerUi() {
     const ImGuiIO& io = ImGui::GetIO();
@@ -370,13 +374,16 @@ void DrawTrackerUi() {
     // The check data is followed on every frame, whatever the tab, so newly
     // reachable checks are noticed even while another tab is shown.
     const bool checksReady = Checks::Update();
+    const bool hintsReady = HintIndex::Update() && checksReady;
+    HintMap::Update(hintsReady);
 
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
     const float tabWidth = (ImGui::GetContentRegionAvail().x - spacing * 2.0f) / 3.0f;
     const float tabHeight = 44.0f;
     DrawTabButton(Label("Items", "Gegenstaende", "Objets"), TAB_ITEMS, tabWidth, tabHeight);
     ImGui::SameLine();
-    DrawTabButton(Label("Hints", "Hinweise", "Indices"), TAB_HINTS, tabWidth, tabHeight);
+    DrawTabButton(Label("Hints", "Hinweise", "Indices"), TAB_HINTS, tabWidth, tabHeight,
+                  hintsReady && HintMap::HasNews());
     ImGui::SameLine();
     DrawTabButton(Label("Checks", "Checks", "Checks"), TAB_CHECKS, tabWidth, tabHeight,
                   checksReady && Checks::HasFresh());
@@ -386,11 +393,7 @@ void DrawTrackerUi() {
     if (tab == TAB_CHECKS) {
         Checks::Draw(checksReady);
     } else if (tab == TAB_HINTS) {
-        ImGui::BeginChild("##DualScreenHints", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None);
-        ImGui::PushFont(BigFont());
-        HintTracker::DrawEmbedded();
-        ImGui::PopFont();
-        ImGui::EndChild();
+        HintMap::Draw(hintsReady);
     } else {
         // Everything fits on one page: no scrollbar on the item tracker.
         ImGui::BeginChild("##DualScreenItems", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None,
@@ -462,6 +465,108 @@ bool DualScreenTracker_Render(int surfaceWidth, int surfaceHeight) {
     return true;
 }
 
+namespace {
+
+// Uploads an RGBA8 picture as a GUI texture.
+void UploadRgba(Fast::Fast3dGui* gui, const char* name, std::vector<uint8_t> rgba, uint16_t width, uint16_t height) {
+    Fast::Texture tex;
+    tex.Type = Fast::TextureType::RGBA32bpp;
+    tex.Width = width;
+    tex.Height = height;
+    tex.ImageDataSize = static_cast<uint32_t>(rgba.size());
+    auto buffer = std::make_shared<std::vector<char>>(rgba.begin(), rgba.end());
+    tex.mImageBuffer = buffer;
+    tex.ImageData = reinterpret_cast<uint8_t*>(buffer->data());
+    gui->LoadGuiTexture(name, tex, "", ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+}
+
+// Halves a picture (2x2 averages) until it is at most maxWidth wide: the GUI
+// samples textures at the nearest texel, so oversized HD art would shimmer.
+void ShrinkRgba(std::vector<uint8_t>& rgba, uint16_t& width, uint16_t& height, int maxWidth) {
+    while (width > maxWidth && width >= 2 && height >= 2) {
+        const int w = width / 2;
+        const int h = height / 2;
+        std::vector<uint8_t> out(static_cast<size_t>(w) * h * 4);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                for (int c = 0; c < 4; c++) {
+                    int sum = 0;
+                    for (int dy = 0; dy < 2; dy++) {
+                        for (int dx = 0; dx < 2; dx++) {
+                            sum += rgba[((static_cast<size_t>(y) * 2 + dy) * width + (x * 2 + dx)) * 4 + c];
+                        }
+                    }
+                    out[(static_cast<size_t>(y) * w + x) * 4 + c] = static_cast<uint8_t>(sum / 4);
+                }
+            }
+        }
+        rgba.swap(out);
+        width = static_cast<uint16_t>(w);
+        height = static_cast<uint16_t>(h);
+    }
+}
+
+std::shared_ptr<Fast::Texture> LoadTextureExact(const std::string& path) {
+    auto res = Ship::Context::GetRawInstance()->GetResourceManager()->LoadResource(path, true);
+    return std::dynamic_pointer_cast<Fast::Texture>(res);
+}
+
+// The pause menu world map (colour-indexed in the ROM, so decoded here), the
+// area boxes that light up the current place, and the map dot.
+void LoadWorldMapTextures(Fast::Fast3dGui* gui) {
+    const ImVec4 white(1.0f, 1.0f, 1.0f, 1.0f);
+    bool mapLoaded = false;
+
+    // HD texture pack version first, when one is active.
+    if (ResourceMgr_IsAltAssetsEnabled() && ResourceMgr_FileAltExists(dgWorldMapImageTex)) {
+        auto alt = LoadTextureExact("alt/textures/icon_item_field_static/gWorldMapImageTex");
+        if (alt != nullptr && alt->ImageData != nullptr && alt->Type == Fast::TextureType::RGBA32bpp &&
+            (alt->Flags & TEX_FLAG_LOAD_AS_RAW) != 0 && alt->Width > 0 && alt->Height > 0) {
+            uint16_t w = alt->Width;
+            uint16_t h = alt->Height;
+            std::vector<uint8_t> rgba(alt->ImageData, alt->ImageData + static_cast<size_t>(w) * h * 4);
+            ShrinkRgba(rgba, w, h, 1300);
+            UploadRgba(gui, "DST_WORLD_MAP", std::move(rgba), w, h);
+            mapLoaded = true;
+        }
+    }
+
+    if (!mapLoaded) {
+        auto image = LoadTextureExact(dgWorldMapImageTex);
+        auto palette = LoadTextureExact(dgWorldMapImageTLUT);
+        if (image != nullptr && palette != nullptr && image->ImageData != nullptr && palette->ImageData != nullptr &&
+            image->Width > 0 && image->Height > 0 && palette->ImageDataSize >= 512) {
+            const size_t count = static_cast<size_t>(image->Width) * image->Height;
+            if (image->ImageDataSize >= count) {
+                std::vector<uint8_t> rgba(count * 4);
+                for (size_t i = 0; i < count; i++) {
+                    const uint8_t index = image->ImageData[i];
+                    const uint8_t b1 = palette->ImageData[index * 2 + 0];
+                    const uint8_t b2 = palette->ImageData[index * 2 + 1];
+                    rgba[i * 4 + 0] = static_cast<uint8_t>((b1 >> 3) * 0xFF / 0x1F);
+                    rgba[i * 4 + 1] = static_cast<uint8_t>((((b1 & 7) << 2) | (b2 >> 6)) * 0xFF / 0x1F);
+                    rgba[i * 4 + 2] = static_cast<uint8_t>(((b2 >> 1) & 0x1F) * 0xFF / 0x1F);
+                    rgba[i * 4 + 3] = 0xFF;
+                }
+                UploadRgba(gui, "DST_WORLD_MAP", std::move(rgba), image->Width, image->Height);
+            }
+        }
+    }
+
+    static const char* const boxPaths[] = {
+        dgWorldMapAreaBox1Tex, dgWorldMapAreaBox2Tex, dgWorldMapAreaBox3Tex, dgWorldMapAreaBox4Tex,
+        dgWorldMapAreaBox5Tex, dgWorldMapAreaBox6Tex, dgWorldMapAreaBox7Tex, dgWorldMapAreaBox8Tex,
+    };
+    for (int i = 0; i < 8; i++) {
+        char name[16];
+        std::snprintf(name, sizeof(name), "DST_WM_BOX%d", i + 1);
+        gui->LoadGuiTexture(name, boxPaths[i], "", white);
+    }
+    gui->LoadGuiTexture("DST_WM_DOT", dgWorldMapDotTex, "", white);
+}
+
+} // namespace
+
 void DualScreenTracker_PrepareResources() {
     if (sTexturesLoaded) {
         return;
@@ -477,6 +582,7 @@ void DualScreenTracker_PrepareResources() {
     gui->LoadGuiTexture("DST_CURSOR_BL", dgPauseMenuCursorBottomLeftTex, "", white);
     gui->LoadGuiTexture("DST_CURSOR_BR", dgPauseMenuCursorBottomRightTex, "", white);
     gui->LoadGuiTexture("DST_CLOCK", dgClockIconTex, "", white);
+    LoadWorldMapTextures(gui.get());
     sTexturesLoaded = true;
 }
 

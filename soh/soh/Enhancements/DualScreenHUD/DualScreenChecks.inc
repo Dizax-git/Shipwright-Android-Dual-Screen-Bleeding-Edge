@@ -499,12 +499,35 @@ void DrawAreaCard(const RegionDef& region, const AreaDef& def, float w, float h)
         statusColor = kColLocked;
     }
     ShadowText(dl, big, 16.0f, ImVec2(min.x + 14.0f, min.y + 32.0f), statusColor, status);
+    float tagRight = max.x - 8.0f;
     if (stats.spoiled && stats.fresh > 0) {
         char fresh[32];
         std::snprintf(fresh, sizeof(fresh), "+%d %s", stats.fresh, Label("NEW", "NEU", "NOUV."));
         const float freshW = TextWidth(big, 15.0f, fresh);
         ShadowText(dl, big, 15.0f, ImVec2(max.x - freshW - 8.0f, min.y + 33.0f),
                    WithAlpha(kColTodo, static_cast<int>(150 + 105 * Pulse(6.0f))), fresh);
+        tagRight -= freshW + 8.0f;
+    }
+    // What the hints already read say about this area (Hints tab colours).
+    {
+        const HintIndex::ZoneInfo& hints = HintIndex::Get(def.area);
+        const int pending = hints.PendingItems();
+        if (pending > 0) {
+            char star[16];
+            std::snprintf(star, sizeof(star), ICON_FA_STAR "%d", pending);
+            const float w = TextWidth(big, 14.0f, star);
+            ShadowText(dl, big, 14.0f, ImVec2(tagRight - w, min.y + 34.0f), IM_COL32(255, 215, 90, 255), star);
+            tagRight -= w + 8.0f;
+        }
+        if (hints.foolish || hints.woth) {
+            const char* tag = hints.foolish ? Label("Foolish", "Unnütz", "Inutile") : Label("Hero", "Held", "Héros");
+            const ImU32 color = hints.foolish ? IM_COL32(255, 150, 180, 255) : IM_COL32(100, 180, 255, 255);
+            const float w = TextWidth(big, 13.0f, tag);
+            const ImVec2 tMin(tagRight - w - 12.0f, min.y + 32.0f);
+            dl->AddRectFilled(tMin, ImVec2(tagRight, tMin.y + 20.0f), WithAlpha(color, 50), 10.0f);
+            dl->AddRect(tMin, ImVec2(tagRight, tMin.y + 20.0f), WithAlpha(color, 170), 10.0f, 0, 1.0f);
+            ShadowText(dl, big, 13.0f, ImVec2(tMin.x + 6.0f, tMin.y + 3.0f), color, tag);
+        }
     }
 
     // Progress bar in the region colour.
@@ -666,6 +689,15 @@ void DrawCheckRow(const Row& row, float width) {
         const ImVec2 tagMin(max.x - tagW - 18.0f, min.y + 9.0f);
         dl->AddRectFilled(tagMin, ImVec2(max.x - 8.0f, tagMin.y + 22.0f), WithAlpha(kColTodo, 60), 10.0f);
         ShadowText(dl, big, 14.0f, ImVec2(tagMin.x + 5.0f, tagMin.y + 3.0f), accent, tag);
+        rightLimit = tagMin.x - 6.0f;
+    }
+    if (row.state != State::Done && HintIndex::IsCheckHinted(row.rc)) {
+        // A gossip stone (or another hint already read) named this check.
+        const std::string tag = std::string(ICON_FA_STAR " ") + Label("Hint", "Hinweis", "Indice");
+        const float tagW = TextWidth(big, 14.0f, tag.c_str());
+        const ImVec2 tagMin(rightLimit - tagW - 10.0f, min.y + 9.0f);
+        dl->AddRectFilled(tagMin, ImVec2(rightLimit, tagMin.y + 22.0f), IM_COL32(255, 215, 90, 50), 10.0f);
+        ShadowText(dl, big, 14.0f, ImVec2(tagMin.x + 5.0f, tagMin.y + 3.0f), IM_COL32(255, 215, 90, 255), tag.c_str());
         rightLimit = tagMin.x - 6.0f;
     }
     ShadowText(dl, big, 18.0f, ImVec2(nameX, min.y + 9.0f), nameColor, label.c_str(), rightLimit);
