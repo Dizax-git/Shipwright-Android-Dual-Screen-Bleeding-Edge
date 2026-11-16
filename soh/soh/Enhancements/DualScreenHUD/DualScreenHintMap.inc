@@ -110,6 +110,9 @@ struct SpotSummary {
 
 SpotSummary Summarize(const Spot& spot) {
     SpotSummary s;
+    if (spot.areas.empty()) {
+        return s;
+    }
     for (RandomizerCheckArea area : spot.areas) {
         const HintIndex::ZoneInfo& info = HintIndex::Get(area);
         s.woth = s.woth || info.woth;
@@ -340,6 +343,10 @@ void DrawPanel(const Spot& spot, ImVec2 min, ImVec2 size) {
                         stateIcon = ICON_FA_ARROW_CIRCLE_RIGHT;
                         whereColor = Checks::kColTodo;
                         break;
+                    case Checks::State::OtherAge:
+                        stateIcon = ICON_FA_HOURGLASS_HALF;
+                        whereColor = Checks::kColOtherAge;
+                        break;
                     case Checks::State::Locked:
                         stateIcon = ICON_FA_LOCK;
                         whereColor = Checks::kColLocked;
@@ -537,7 +544,7 @@ void Draw(bool ready) {
             continue;
         }
         DrawMarker(dl, c, Summarize(spot), static_cast<int>(i) == hereSpot);
-        if (static_cast<int>(i) == sSelectedSpot) {
+        if (static_cast<int>(i) == sSelectedSpot && panelOpen) {
             DrawPauseCursor(dl, ImVec2(c.x - 12.0f, c.y - 12.0f), ImVec2(c.x + 12.0f, c.y + 12.0f));
         }
     }
@@ -563,8 +570,12 @@ void Draw(bool ready) {
         entry(kColStone, ICON_FA_COMMENT, Label("Stone to read", "Stein offen", "Pierre à lire"));
     }
 
-    if (panelOpen) {
-        DrawPanel(spots[sSelectedSpot], ImVec2(mapMin.x, panelTop), ImVec2(mapWidth, panelH));
+    // Re-read the selection: tapping the selected marker again (above) closes
+    // the box this very frame. Indexing with the old "open" flag read
+    // spots[-1] and crashed (SIGSEGV of 16/11, 22:34).
+    const int selected = sSelectedSpot;
+    if (selected >= 0 && selected < static_cast<int>(spots.size()) && !spots[selected].areas.empty()) {
+        DrawPanel(spots[selected], ImVec2(mapMin.x, panelTop), ImVec2(mapWidth, panelH));
     }
 
     // Reserve the whole area so the window layout stays put.

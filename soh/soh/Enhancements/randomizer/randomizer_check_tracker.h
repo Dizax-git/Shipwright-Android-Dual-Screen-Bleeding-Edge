@@ -77,4 +77,9 @@ std::string GetCheckLabel(RandomizerCheck rc);
 // Item name (or price) the player already knows for this check, empty if none.
 std::string GetCheckItemText(RandomizerCheck rc);
 void SetCheckSkippedByPlayer(RandomizerCheck rc, bool skipped);
+// Which ages reach an available check in the last logic pass (the logic counts
+// trips through the Temple of Time): bit 0 = child, bit 1 = adult. 0 when the
+// check is not available or the age could not be told apart.
+enum : uint8_t { CHECK_AGE_CHILD = 1, CHECK_AGE_ADULT = 2 };
+uint8_t GetCheckReachAges(RandomizerCheck rc);
 } // namespace CheckTracker

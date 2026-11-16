@@ -419,6 +419,27 @@ function Invoke-SohWindowsAndroidBuild {
         }
         [IO.File]::Move($temporaryDestination, $destination, $true)
 
+        # Thor build: keep libsoh.so with its symbol table (the APK's copy is
+        # stripped) so crash backtraces can be symbolized. Never fails the build.
+        try {
+            $intermediates = Join-Path $source 'Android\app\build\intermediates'
+            $libs = @(Get-ChildItem -LiteralPath $intermediates -Recurse -Filter 'libsoh.so' -File -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -match 'arm64-v8a' -and $_.FullName -notmatch 'stripped' } |
+                Sort-Object Length -Descending)
+            foreach ($lib in $libs) { Write-Host "libsoh.so candidate: $($lib.Length) $($lib.FullName)" }
+            if ($libs.Count -gt 0) {
+                $symbols = Join-Path $output 'symbols'
+                New-Item -ItemType Directory -Force -Path $symbols | Out-Null
+                Copy-Item -LiteralPath $libs[0].FullName -Destination (Join-Path $symbols 'libsoh.so') -Force
+            }
+            else {
+                Write-Warning 'No unstripped libsoh.so found under Android\app\build\intermediates.'
+            }
+        }
+        catch {
+            Write-Warning "Could not keep the unstripped libsoh.so: $_"
+        }
+
         $succeeded = $true
         [pscustomobject]@{
             Status = 'Built'

@@ -10,7 +10,9 @@
 // between regions. Tapping a card opens the area's list of checks.
 //
 // Colour code (fixed, independent of the region colours):
-//   Navi blue  = can be done now with your items ("to do")
+//   Navi blue  = can be done now with your items, at your current age ("to do")
+//   lavender + hourglass = reachable too, but as the other age (the logic goes
+//                through the Temple of Time: become adult / child first)
 //   grey + lock = not reachable yet
 //   gold tick, dimmed and struck out = done, no need to go back
 //   pulsing NEW = became reachable recently (just got bombs, a song...)
@@ -19,6 +21,7 @@ namespace Checks {
 
 constexpr ImU32 kColTodo = IM_COL32(120, 230, 255, 255);
 constexpr ImU32 kColLocked = IM_COL32(125, 125, 140, 255);
+constexpr ImU32 kColOtherAge = IM_COL32(195, 155, 255, 255);
 constexpr ImU32 kColDone = IM_COL32(230, 190, 60, 255);
 constexpr ImU32 kColDoneText = IM_COL32(120, 120, 130, 255);
 constexpr ImU32 kColText = IM_COL32(240, 240, 240, 255);
@@ -115,12 +118,13 @@ const std::vector<RegionDef>& Regions() {
     return regions;
 }
 
-enum class State { Done, Skipped, Todo, Locked, Unknown };
+enum class State { Done, Skipped, Todo, OtherAge, Locked, Unknown };
 
 struct AreaStats {
     int total = 0;
     int done = 0;      // collected or skipped
     int todo = 0;      // reachable now (or simply remaining when logic is off)
+    int otherAge = 0;  // reachable, but as the other age
     int fresh = 0;     // reachable since a short while
     bool spoiled = true;
 };
@@ -129,6 +133,7 @@ struct RegionStats {
     int total = 0;
     int done = 0;
     int todo = 0;
+    int otherAge = 0;
     int fresh = 0;
 };
 
@@ -151,6 +156,15 @@ bool IsFrench() {
     return CVarGetInteger(CVAR_SETTING("Languages"), 0) == 2;
 }
 
+bool IsAdultNow() {
+    return LINK_IS_ADULT;
+}
+
+// "adult" when Link is a child now, and the other way round.
+const char* OtherAgeLabel() {
+    return IsAdultNow() ? Label("as child", "als Kind", "en enfant") : Label("as adult", "als Erwachsener", "en adulte");
+}
+
 std::string AreaName(const AreaDef& def) {
     return IsFrench() ? std::string(def.fr) : RandomizerCheckObjects::GetRCAreaName(def.area);
 }
@@ -169,7 +183,14 @@ State GetState(RandomizerCheck rc) {
     if (!CheckTracker::IsLogicShown()) {
         return State::Unknown;
     }
-    return itemLoc->IsAvailable() ? State::Todo : State::Locked;
+    if (!itemLoc->IsAvailable()) {
+        return State::Locked;
+    }
+    // Reachable: at the current age, or only after going through the Temple
+    // of Time? (Unknown ages = 0: keep it as plain "to do".)
+    const uint8_t ages = CheckTracker::GetCheckReachAges(rc);
+    const uint8_t now = IsAdultNow() ? CheckTracker::CHECK_AGE_ADULT : CheckTracker::CHECK_AGE_CHILD;
+    return ages != 0 && (ages & now) == 0 ? State::OtherAge : State::Todo;
 }
 
 bool IsFresh(RandomizerCheck rc) {
@@ -212,10 +233,13 @@ void RecomputeStats() {
                     stats.done++;
                 } else if (todo) {
                     stats.todo++;
+                } else if (state == State::OtherAge) {
+                    stats.otherAge++;
                 }
                 // Newly reachable: highlight it for a while (only once a first
                 // baseline exists, so loading a save doesn't light up everything).
-                const bool reachable = state == State::Todo;
+                // Changing age only moves checks between blue and lavender: not news.
+                const bool reachable = state == State::Todo || state == State::OtherAge;
                 if (reachable && !sWasTodo[rc] && sBaselineSet) {
                     sFreshSince[static_cast<int>(rc)] = now;
                 }
@@ -232,6 +256,7 @@ void RecomputeStats() {
             region.total += stats.total;
             region.done += stats.done;
             region.todo += stats.todo;
+            region.otherAge += stats.otherAge;
             region.fresh += stats.fresh;
         }
     }
@@ -361,11 +386,12 @@ void DrawHeader() {
     const float width = ImGui::GetContentRegionAvail().x;
 
     // Global progress.
-    int total = 0, done = 0, todo = 0;
+    int total = 0, done = 0, todo = 0, otherAge = 0;
     for (const RegionStats& region : sRegionStats) {
         total += region.total;
         done += region.done;
         todo += region.todo;
+        otherAge += region.otherAge;
     }
     {
         const ImVec2 min = ImGui::GetCursorScreenPos();
@@ -377,9 +403,17 @@ void DrawHeader() {
         const bool logic = CheckTracker::IsLogicShown();
         std::snprintf(right, sizeof(right), "%s %d %s", logic ? ICON_FA_ARROW_CIRCLE_RIGHT : ICON_FA_CIRCLE_O, todo,
                       logic ? Label("to do", "offen", "à faire") : Label("left", "offen", "restants"));
-        const float rightW = TextWidth(big, 18.0f, right);
+        float rightW = TextWidth(big, 18.0f, right);
         ShadowText(dl, big, 18.0f, ImVec2(min.x + width - rightW - 4.0f, min.y + 3.0f), logic ? kColTodo : kColText,
                    right);
+        if (logic && otherAge > 0) {
+            // What the other age could do, in its own colour, left of "to do".
+            char age[32];
+            std::snprintf(age, sizeof(age), "%s %d", ICON_FA_HOURGLASS_HALF, otherAge);
+            const float ageW = TextWidth(big, 18.0f, age);
+            ShadowText(dl, big, 18.0f, ImVec2(min.x + width - rightW - ageW - 18.0f, min.y + 3.0f), kColOtherAge, age);
+            rightW += ageW + 14.0f;
+        }
         // Progress bar between the two labels.
         const float barX0 = min.x + TextWidth(big, 18.0f, left) + 18.0f;
         const float barX1 = min.x + width - rightW - 18.0f;
@@ -424,9 +458,14 @@ void DrawHeader() {
             std::snprintf(badge, sizeof(badge), "%s", ICON_FA_CHECK);
             badgeColor = kColDone;
         } else {
-            std::snprintf(badge, sizeof(badge), "%d", stats.todo);
-            if (stats.todo == 0) {
-                badgeColor = kColLocked;
+            if (stats.todo == 0 && stats.otherAge > 0) {
+                std::snprintf(badge, sizeof(badge), "%s%d", ICON_FA_HOURGLASS_HALF, stats.otherAge);
+                badgeColor = kColOtherAge;
+            } else {
+                std::snprintf(badge, sizeof(badge), "%d", stats.todo);
+                if (stats.todo == 0) {
+                    badgeColor = kColLocked;
+                }
             }
         }
         const float badgeW = TextWidth(big, 18.0f, badge);
@@ -493,12 +532,22 @@ void DrawAreaCard(const RegionDef& region, const AreaDef& def, float w, float h)
         std::snprintf(status, sizeof(status), "%s %d %s", ICON_FA_ARROW_CIRCLE_RIGHT, stats.todo,
                       Label("to do", "offen", "à faire"));
         statusColor = kColTodo;
+    } else if (stats.otherAge > 0) {
+        std::snprintf(status, sizeof(status), "%s %d %s", ICON_FA_HOURGLASS_HALF, stats.otherAge, OtherAgeLabel());
+        statusColor = kColOtherAge;
     } else {
         std::snprintf(status, sizeof(status), "%s %d %s", ICON_FA_LOCK, stats.total - stats.done,
                       Label("locked", "gesperrt", "bloqués"));
         statusColor = kColLocked;
     }
     ShadowText(dl, big, 16.0f, ImVec2(min.x + 14.0f, min.y + 32.0f), statusColor, status);
+    if (logic && stats.spoiled && !complete && stats.todo > 0 && stats.otherAge > 0) {
+        // Blue first, then what the other age adds, in lavender.
+        char age[24];
+        std::snprintf(age, sizeof(age), "%s %d", ICON_FA_HOURGLASS_HALF, stats.otherAge);
+        ShadowText(dl, big, 16.0f, ImVec2(min.x + 14.0f + TextWidth(big, 16.0f, status) + 12.0f, min.y + 32.0f),
+                   kColOtherAge, age);
+    }
     float tagRight = max.x - 8.0f;
     if (stats.spoiled && stats.fresh > 0) {
         char fresh[32];
@@ -605,20 +654,22 @@ struct Row {
 };
 
 int StateRank(const Row& row) {
-    if (row.fresh) {
+    if (row.fresh && row.state != State::OtherAge) {
         return 0;
     }
     switch (row.state) {
         case State::Todo:
         case State::Unknown:
             return 1;
-        case State::Locked:
+        case State::OtherAge:
             return 2;
-        case State::Skipped:
+        case State::Locked:
             return 3;
+        case State::Skipped:
+            return 4;
         case State::Done:
         default:
-            return 4;
+            return 5;
     }
 }
 
@@ -651,6 +702,11 @@ void DrawCheckRow(const Row& row, float width) {
             accent = kColText;
             icon = ICON_FA_CIRCLE_O;
             break;
+        case State::OtherAge:
+            accent = kColOtherAge;
+            nameColor = IM_COL32(222, 214, 240, 255);
+            icon = ICON_FA_HOURGLASS_HALF;
+            break;
         case State::Locked:
             accent = kColLocked;
             nameColor = IM_COL32(165, 165, 178, 255);
@@ -670,7 +726,7 @@ void DrawCheckRow(const Row& row, float width) {
             break;
     }
     if (row.fresh) {
-        accent = WithAlpha(kColTodo, static_cast<int>(150 + 105 * Pulse(6.0f)));
+        accent = WithAlpha(accent, static_cast<int>(150 + 105 * Pulse(6.0f)));
     }
 
     const bool dim = row.state == State::Done || row.state == State::Skipped;
@@ -680,14 +736,17 @@ void DrawCheckRow(const Row& row, float width) {
         dl->AddRect(min, max, IM_COL32(255, 255, 120, 200), 6.0f, 0, 2.0f);
     }
 
-    ShadowText(dl, big, 18.0f, ImVec2(min.x + 14.0f, min.y + 10.0f), accent, icon);
-    const float nameX = min.x + 44.0f;
+    // State icon, a bit larger than the text and centred in its column.
+    const float iconSize = 23.0f;
+    const float iconW = TextWidth(big, iconSize, icon);
+    ShadowText(dl, big, iconSize, ImVec2(min.x + 26.0f - iconW * 0.5f, min.y + 7.0f), accent, icon);
+    const float nameX = min.x + 46.0f;
     float rightLimit = max.x - 8.0f;
     if (row.fresh) {
         const char* tag = Label("NEW", "NEU", "NOUVEAU");
         const float tagW = TextWidth(big, 14.0f, tag);
         const ImVec2 tagMin(max.x - tagW - 18.0f, min.y + 9.0f);
-        dl->AddRectFilled(tagMin, ImVec2(max.x - 8.0f, tagMin.y + 22.0f), WithAlpha(kColTodo, 60), 10.0f);
+        dl->AddRectFilled(tagMin, ImVec2(max.x - 8.0f, tagMin.y + 22.0f), WithAlpha(accent, 60), 10.0f);
         ShadowText(dl, big, 14.0f, ImVec2(tagMin.x + 5.0f, tagMin.y + 3.0f), accent, tag);
         rightLimit = tagMin.x - 6.0f;
     }
@@ -709,7 +768,7 @@ void DrawCheckRow(const Row& row, float width) {
         const ImU32 itemColor = row.state == State::Done ? WithAlpha(kColDone, 200) : kColSeen;
         const std::string line = (row.state == State::Done ? std::string(ICON_FA_GIFT " ") : std::string(ICON_FA_EYE " ")) +
                                  itemText;
-        ShadowText(dl, big, 15.0f, ImVec2(nameX, min.y + 33.0f), itemColor, line.c_str(), max.x - 8.0f);
+        ShadowText(dl, big, 16.0f, ImVec2(nameX, min.y + 33.0f), itemColor, line.c_str(), max.x - 8.0f);
     }
 
     if (expanded) {
@@ -727,6 +786,18 @@ void DrawCheckRow(const Row& row, float width) {
         ImGui::Indent(10.0f);
         ImGui::PushFont(big);
         ImGui::TextWrapped("%s", fullName.c_str());
+        if (row.state == State::OtherAge) {
+            // Why it is lavender: the logic needs the other age.
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(kColOtherAge));
+            ImGui::TextWrapped("%s %s", ICON_FA_HOURGLASS_HALF,
+                               IsAdultNow() ? Label("Needs you to be a child (Temple of Time).",
+                                                    "Nur als Kind (Zitadelle der Zeit).",
+                                                    "Faisable en enfant (passer par le Temple du Temps).")
+                                            : Label("Needs you to be an adult (Temple of Time).",
+                                                    "Nur als Erwachsener (Zitadelle der Zeit).",
+                                                    "Faisable en adulte (passer par le Temple du Temps)."));
+            ImGui::PopStyleColor();
+        }
         ImGui::PopFont();
         ImGui::Unindent(10.0f);
         ImGui::PopStyleColor();
@@ -808,14 +879,14 @@ void DrawDetail() {
         return;
     }
 
-    // Rows, most useful first: new, to do, locked, skipped, done.
+    // Rows, most useful first: new, to do, other age, locked, skipped, done.
     std::vector<Row> rows;
     for (RandomizerCheck rc : CheckTracker::GetChecksForArea(sDetailArea)) {
         if (rc != RC_LINKS_POCKET && !CheckTracker::IsVisibleInCheckTracker(rc)) {
             continue;
         }
         const State state = GetState(rc);
-        rows.push_back({ rc, state, state == State::Todo && IsFresh(rc) });
+        rows.push_back({ rc, state, (state == State::Todo || state == State::OtherAge) && IsFresh(rc) });
     }
     std::stable_sort(rows.begin(), rows.end(),
                      [](const Row& a, const Row& b) { return StateRank(a) < StateRank(b); });

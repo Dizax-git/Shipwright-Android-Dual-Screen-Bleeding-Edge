@@ -313,6 +313,149 @@ static int ItemCategoryRank(GetItemCategory category) {
 
 // Group label for each ItemCategoryRank value, in rank order. Callers clamp
 // the unresolved-item fallback rank (JUNK + 1) into the Junk group first.
+// ---- French display names (Thor build) ----
+// StaticData::hintNames stays English only: its strings are the keys of the
+// spoiler log hints and of the read hints stored in the save. These tables
+// are only used to show the names when the game is in French.
+static bool IsFrenchDisplay() {
+    return CVarGetInteger(CVAR_SETTING("Languages"), 0) == 2;
+}
+
+static const std::unordered_map<int, const char*>& FrenchHintNames() {
+    static const std::unordered_map<int, const char*> names = {
+        { RH_KF_DEKU_TREE_LEFT_GOSSIP_STONE, "Forêt Kokiri : pierre à gauche de l'Arbre Mojo" },
+        { RH_KF_DEKU_TREE_RIGHT_GOSSIP_STONE, "Forêt Kokiri : pierre à droite de l'Arbre Mojo" },
+        { RH_KF_GOSSIP_STONE, "Forêt Kokiri : pierre à potins" },
+        { RH_KF_STORMS_GROTTO_GOSSIP_STONE, "Forêt Kokiri : pierre de la grotte du Chant des Tempêtes" },
+        { RH_LW_GOSSIP_STONE, "Bois Perdus : pierre à potins" },
+        { RH_LW_NEAR_SHORTCUTS_GROTTO_GOSSIP_STONE, "Bois Perdus : pierre de la grotte près des raccourcis" },
+        { RH_SFM_MAZE_NEAR_LW_GOSSIP_STONE, "Bosquet Sacré : pierre du labyrinthe côté Bois Perdus" },
+        { RH_SFM_MAZE_CENTER_GOSSIP_STONE, "Bosquet Sacré : pierre au centre du labyrinthe" },
+        { RH_SFM_SARIA_GOSSIP_STONE, "Bosquet Sacré : pierre près de Saria" },
+        { RH_HF_COW_GROTTO_GOSSIP_STONE, "Plaine d'Hyrule : pierre de la grotte à la vache" },
+        { RH_HF_NEAR_MARKET_GROTTO_GOSSIP_STONE, "Plaine d'Hyrule : pierre de la grotte près du marché" },
+        { RH_HF_OPEN_GROTTO_GOSSIP_STONE, "Plaine d'Hyrule : pierre de la grotte ouverte" },
+        { RH_HF_SOUTHEAST_GROTTO_GOSSIP_STONE, "Plaine d'Hyrule : pierre de la grotte au sud-est" },
+        { RH_TOT_LEFT_CENTER_GOSSIP_STONE, "Temple du Temps : pierre au centre gauche" },
+        { RH_TOT_LEFTMOST_GOSSIP_STONE, "Temple du Temps : pierre tout à gauche" },
+        { RH_TOT_RIGHT_CENTER_GOSSIP_STONE, "Temple du Temps : pierre au centre droit" },
+        { RH_TOT_RIGHTMOST_GOSSIP_STONE, "Temple du Temps : pierre tout à droite" },
+        { RH_HC_MALON_GOSSIP_STONE, "Château d'Hyrule : pierre près de Malon" },
+        { RH_HC_ROCK_WALL_GOSSIP_STONE, "Château d'Hyrule : pierre du mur de roche" },
+        { RH_HC_STORMS_GROTTO_GOSSIP_STONE, "Château d'Hyrule : pierre de la grotte du Chant des Tempêtes" },
+        { RH_KAK_OPEN_GROTTO_GOSSIP_STONE, "Village Cocorico : pierre de la grotte ouverte" },
+        { RH_GRAVEYARD_GOSSIP_STONE, "Cimetière : pierre à potins" },
+        { RH_DMT_GOSSIP_STONE, "Chemin du Péril : pierre à potins" },
+        { RH_DMT_STORMS_GROTTO_GOSSIP_STONE, "Chemin du Péril : pierre de la grotte du Chant des Tempêtes" },
+        { RH_GC_MAZE_GOSSIP_STONE, "Village Goron : pierre du labyrinthe" },
+        { RH_GC_MEDIGORON_GOSSIP_STONE, "Village Goron : pierre près de Médigoron" },
+        { RH_DMC_GOSSIP_STONE, "Cratère du Péril : pierre à potins" },
+        { RH_DMC_UPPER_GROTTO_GOSSIP_STONE, "Cratère du Péril : pierre de la grotte du haut" },
+        { RH_ZR_NEAR_DOMAIN_GOSSIP_STONE, "Rivière Zora : pierre près du Domaine" },
+        { RH_ZR_NEAR_GROTTOS_GOSSIP_STONE, "Rivière Zora : pierre près des grottes" },
+        { RH_ZR_OPEN_GROTTO_GOSSIP_STONE, "Rivière Zora : pierre de la grotte ouverte" },
+        { RH_ZD_GOSSIP_STONE, "Domaine Zora : pierre à potins" },
+        { RH_ZF_JABU_GOSSIP_STONE, "Fontaine Zora : pierre près de Jabu-Jabu" },
+        { RH_ZF_FAIRY_GOSSIP_STONE, "Fontaine Zora : pierre près de la Fontaine des Fées" },
+        { RH_LH_LAB_GOSSIP_STONE, "Lac Hylia : pierre près du laboratoire" },
+        { RH_LH_SOUTHEAST_GOSSIP_STONE, "Lac Hylia : pierre au sud-est" },
+        { RH_LH_SOUTHWEST_GOSSIP_STONE, "Lac Hylia : pierre au sud-ouest" },
+        { RH_GV_GOSSIP_STONE, "Vallée Gerudo : pierre à potins" },
+        { RH_COLOSSUS_GOSSIP_STONE, "Colosse du Désert : pierre à potins" },
+        { RH_DODONGOS_CAVERN_GOSSIP_STONE, "Caverne Dodongo : pierre à potins" },
+        { RH_GANONDORF_HINT, "Indice de Ganondorf" },
+        { RH_GANONDORF_JOKE, "Blague de Ganondorf" },
+        { RH_SHEIK_HINT, "Sheik au Château de Ganon" },
+        { RH_DAMPES_DIARY, "Journal d'Igor" },
+        { RH_GREG_RUPEE, "Greg à la Chasse-aux-Trésors" },
+        { RH_ALTAR_CHILD, "Autel du Temple du Temps (enfant)" },
+        { RH_ALTAR_ADULT, "Autel du Temple du Temps (adulte)" },
+        { RH_FOREST_BOSS_KEY_HINT, "Clé d'Or du Temple de la Forêt" },
+        { RH_FIRE_BOSS_KEY_HINT, "Clé d'Or du Temple du Feu" },
+        { RH_WATER_BOSS_KEY_HINT, "Clé d'Or du Temple de l'Eau" },
+        { RH_SPIRIT_BOSS_KEY_HINT, "Clé d'Or du Temple de l'Esprit" },
+        { RH_SHADOW_BOSS_KEY_HINT, "Clé d'Or du Temple de l'Ombre" },
+        { RH_GANONS_BOSS_KEY_HINT, "Clé d'Or du Château de Ganon" },
+        { RH_SARIA_HINT, "Magie de Saria" },
+        { RH_MIDO_HINT, "Mido et l'Épée Kokiri" },
+        { RH_LOACH_HINT, "Loche" },
+        { RH_FISHING_POLE, "Canne à pêche" },
+        { RH_MINUET_WARP_LOC, "Destination du Menuet des Bois" },
+        { RH_BOLERO_WARP_LOC, "Destination du Boléro du Feu" },
+        { RH_SERENADE_WARP_LOC, "Destination de la Sérénade de l'Eau" },
+        { RH_REQUIEM_WARP_LOC, "Destination du Requiem des Esprits" },
+        { RH_NOCTURNE_WARP_LOC, "Destination du Nocturne de l'Ombre" },
+        { RH_PRELUDE_WARP_LOC, "Destination du Prélude de la Lumière" },
+        { RH_HBA_HINT, "Tir à cheval" },
+        { RH_MALON_HINT, "Malon" },
+        { RH_CHICKENS_HINT, "Cocottes d'Anju (enfant)" },
+        { RH_BIG_POES_HINT, "Récompense des Gros Esprits" },
+        { RH_BIGGORON_HINT, "Biggoron (Certificat)" },
+        { RH_FROGS_HINT, "Dernière récompense des Grenouilles" },
+        { RH_OOT_HINT, "Sheik au Temple du Temps" },
+        { RH_MASK_SHOP_HINT, "Foire aux Masques" },
+    };
+    return names;
+}
+
+// Name of a hint as shown in the tracker (never used as a key).
+static std::string HintDisplayName(RandomizerHint hintKey) {
+    if (IsFrenchDisplay()) {
+        const auto& names = FrenchHintNames();
+        auto it = names.find(static_cast<int>(hintKey));
+        if (it != names.end()) {
+            return it->second;
+        }
+    }
+    auto name = Rando::StaticData::hintNames.find(hintKey);
+    return name != Rando::StaticData::hintNames.end() ? name->second.GetForCurrentLanguage(MF_CLEAN) : std::string();
+}
+
+// Area names of the Locations view groups (same names as the Checks tab).
+static std::string AreaDisplayName(RandomizerCheckArea area) {
+    if (IsFrenchDisplay()) {
+        static const std::unordered_map<int, const char*> names = {
+            { RCAREA_KOKIRI_FOREST, "Forêt Kokiri" },
+            { RCAREA_LOST_WOODS, "Bois Perdus" },
+            { RCAREA_SACRED_FOREST_MEADOW, "Bosquet Sacré" },
+            { RCAREA_HYRULE_FIELD, "Plaine d'Hyrule" },
+            { RCAREA_LAKE_HYLIA, "Lac Hylia" },
+            { RCAREA_GERUDO_VALLEY, "Vallée Gerudo" },
+            { RCAREA_GERUDO_FORTRESS, "Forteresse Gerudo" },
+            { RCAREA_WASTELAND, "Désert Hanté" },
+            { RCAREA_DESERT_COLOSSUS, "Colosse du Désert" },
+            { RCAREA_MARKET, "Place du Marché" },
+            { RCAREA_HYRULE_CASTLE, "Château d'Hyrule" },
+            { RCAREA_KAKARIKO_VILLAGE, "Village Cocorico" },
+            { RCAREA_GRAVEYARD, "Cimetière" },
+            { RCAREA_DEATH_MOUNTAIN_TRAIL, "Chemin du Péril" },
+            { RCAREA_GORON_CITY, "Village Goron" },
+            { RCAREA_DEATH_MOUNTAIN_CRATER, "Cratère du Péril" },
+            { RCAREA_ZORAS_RIVER, "Rivière Zora" },
+            { RCAREA_ZORAS_DOMAIN, "Domaine Zora" },
+            { RCAREA_ZORAS_FOUNTAIN, "Fontaine Zora" },
+            { RCAREA_LON_LON_RANCH, "Ranch Lon Lon" },
+            { RCAREA_DEKU_TREE, "Arbre Mojo" },
+            { RCAREA_DODONGOS_CAVERN, "Caverne Dodongo" },
+            { RCAREA_JABU_JABUS_BELLY, "Ventre de Jabu-Jabu" },
+            { RCAREA_FOREST_TEMPLE, "Temple de la Forêt" },
+            { RCAREA_FIRE_TEMPLE, "Temple du Feu" },
+            { RCAREA_WATER_TEMPLE, "Temple de l'Eau" },
+            { RCAREA_SPIRIT_TEMPLE, "Temple de l'Esprit" },
+            { RCAREA_SHADOW_TEMPLE, "Temple de l'Ombre" },
+            { RCAREA_BOTTOM_OF_THE_WELL, "Puits" },
+            { RCAREA_ICE_CAVERN, "Caverne Polaire" },
+            { RCAREA_GERUDO_TRAINING_GROUND, "Gymnase Gerudo" },
+            { RCAREA_GANONS_CASTLE, "Château de Ganon" },
+        };
+        auto it = names.find(static_cast<int>(area));
+        if (it != names.end()) {
+            return it->second;
+        }
+    }
+    return RandomizerCheckObjects::GetRCAreaName(area);
+}
+
 static std::string ItemCategoryRankName(int rank) {
     static const CustomMessage* const rankLabels[] = {
         &majorItemsLabel,      // ITEM_CATEGORY_MAJOR
@@ -581,7 +724,7 @@ static void DrawHintList() {
             }
         }
         if (hintName.empty()) {
-            hintName = Rando::StaticData::hintNames[hintKey].GetForCurrentLanguage(MF_CLEAN);
+            hintName = HintDisplayName(hintKey);
         }
         HintGroup& group = groups[effectiveKey];
         if (group.name.empty()) {
@@ -641,7 +784,7 @@ static void DrawHintList() {
             addHint(hintKey, typeGroupKey(type), typeGroupName(type), RCAREA_INVALID);
         } else {
             RandomizerCheckArea area = Rando::StaticData::GetLocation(rc)->GetArea();
-            addHint(hintKey, area, RandomizerCheckObjects::GetRCAreaName(area), area);
+            addHint(hintKey, area, AreaDisplayName(area), area);
         }
     }
 

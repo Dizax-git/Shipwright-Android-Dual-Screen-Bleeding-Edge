@@ -2451,6 +2451,50 @@ void ImGuiDrawTwoColorPickerSection(const char* text, const char* cvarMainName, 
     UIWidgets::PopStyleCombobox();
 }
 
+// Thor build: for each available check, which age(s) reach it. Run right
+// after the reachability search, while the regions still hold the ages and
+// times they were reached with and the logic still holds its events: a check
+// is reachable as child when one of its regions was reached as child and its
+// own condition holds as child (same test as LocationAccess::ConditionsMet,
+// one age at a time).
+static std::vector<uint8_t> checkReachAges;
+
+static void ComputeReachAges() {
+    checkReachAges.assign(RC_MAX, 0);
+    const auto& ctx = Rando::Context::GetInstance();
+    for (int r = 0; r < RR_MAX; r++) {
+        Region* region = RegionTable(static_cast<RandomizerRegion>(r));
+        if (region == nullptr || !region->HasAccess()) {
+            continue;
+        }
+        for (const LocationAccess& loc : region->locations) {
+            const RandomizerCheck rc = loc.GetLocation();
+            if (rc <= RC_UNKNOWN_CHECK || rc >= RC_MAX || !ctx->GetItemLocation(rc)->IsAvailable()) {
+                continue;
+            }
+            logic->CurrentCheckKey = rc;
+            uint8_t& ages = checkReachAges[rc];
+            if (!(ages & CHECK_AGE_CHILD) &&
+                ((region->childDay && loc.CheckConditionAtAgeTime(logic->IsChild, logic->AtDay)) ||
+                 (region->childNight && loc.CheckConditionAtAgeTime(logic->IsChild, logic->AtNight)))) {
+                ages |= CHECK_AGE_CHILD;
+            }
+            if (!(ages & CHECK_AGE_ADULT) &&
+                ((region->adultDay && loc.CheckConditionAtAgeTime(logic->IsAdult, logic->AtDay)) ||
+                 (region->adultNight && loc.CheckConditionAtAgeTime(logic->IsAdult, logic->AtNight)))) {
+                ages |= CHECK_AGE_ADULT;
+            }
+        }
+    }
+}
+
+uint8_t GetCheckReachAges(RandomizerCheck rc) {
+    if (rc < 0 || static_cast<size_t>(rc) >= checkReachAges.size()) {
+        return 0;
+    }
+    return checkReachAges[rc];
+}
+
 void InternalRecalculateAvailableChecks(RandomizerRegion startingRegion, RandoAgeTime startingAgeTime) {
     if (!enableAvailableChecks || !GameInteractor::IsSaveLoaded()) {
         return;
@@ -2505,6 +2549,7 @@ void InternalRecalculateAvailableChecks(RandomizerRegion startingRegion, RandoAg
         const auto& itemLocation = ctx->GetItemLocation(rc);
         itemLocation->SetAvailable(true);
     }
+    ComputeReachAges();
 
     totalChecksAvailable = 0;
     for (auto& [rcArea, vec] : checksByArea) {

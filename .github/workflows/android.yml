@@ -68,6 +68,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      # Crash reports from the Thor only name exported functions; the copy of
+      # libsoh.so that keeps its symbol table (saved by WindowsNativeBuild.psm1)
+      # lets llvm-symbolizer name the anonymous-namespace functions too.
+      - name: Upload crash symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: thor-symbols-${{ github.sha }}
+          path: windows-native-output/symbols/libsoh.so
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Sign the release candidate with the personal Thor key
         if: ${{ env.HAS_THOR_KEY == 'true' }}
         shell: pwsh
