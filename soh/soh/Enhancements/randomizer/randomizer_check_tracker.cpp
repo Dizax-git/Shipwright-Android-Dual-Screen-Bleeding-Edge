@@ -2801,10 +2801,33 @@ RandomizerCheck GetLastCheckedLocation() {
     return lastLocationChecked;
 }
 
+// French names of every check, from the official French vocabulary of the game.
+static const std::unordered_map<RandomizerCheck, const char*>& FrenchCheckNames() {
+    static const std::unordered_map<RandomizerCheck, const char*> names = {
+#include "check_names_fr.inc"
+    };
+    return names;
+}
+
 std::string GetCheckLabel(RandomizerCheck rc) {
-    auto it = checkNameOverrides.find(rc);
-    if (it != checkNameOverrides.end()) {
-        return it->second;
+    const bool overridden = checkNameOverrides.contains(rc);
+    if (gSaveContext.language == LANGUAGE_FRA) {
+        auto fr = FrenchCheckNames().find(rc);
+        if (fr != FrenchCheckNames().end()) {
+            std::string name = fr->second;
+            // Child pond fish without age split: the native override drops "Child".
+            static const std::string kChild = " (enfant)";
+            if (overridden) {
+                const size_t pos = name.find(kChild);
+                if (pos != std::string::npos) {
+                    name.erase(pos, kChild.size());
+                }
+            }
+            return name;
+        }
+    }
+    if (overridden) {
+        return checkNameOverrides.at(rc);
     }
     return Rando::StaticData::GetLocation(rc)->GetShortName();
 }

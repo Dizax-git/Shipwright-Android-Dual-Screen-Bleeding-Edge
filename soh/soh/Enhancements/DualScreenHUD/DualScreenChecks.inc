@@ -59,7 +59,7 @@ const std::vector<RegionDef>& Regions() {
           "QUEST_MEDALLION_FIRE",
           IM_COL32(235, 95, 65, 255),
           {
-              { RCAREA_DEATH_MOUNTAIN_TRAIL, "Mont du Péril" },
+              { RCAREA_DEATH_MOUNTAIN_TRAIL, "Chemin du Péril" },
               { RCAREA_GORON_CITY, "Village Goron" },
               { RCAREA_DEATH_MOUNTAIN_CRATER, "Cratère du Péril" },
               { RCAREA_DODONGOS_CAVERN, "Caverne Dodongo" },
@@ -74,7 +74,7 @@ const std::vector<RegionDef>& Regions() {
               { RCAREA_ZORAS_DOMAIN, "Domaine Zora" },
               { RCAREA_ZORAS_FOUNTAIN, "Fontaine Zora" },
               { RCAREA_LAKE_HYLIA, "Lac Hylia" },
-              { RCAREA_JABU_JABUS_BELLY, "Jabu-Jabu" },
+              { RCAREA_JABU_JABUS_BELLY, "Ventre de Jabu-Jabu" },
               { RCAREA_ICE_CAVERN, "Caverne Polaire" },
               { RCAREA_WATER_TEMPLE, "Temple de l'Eau" },
           } },
@@ -106,7 +106,7 @@ const std::vector<RegionDef>& Regions() {
           IM_COL32(240, 215, 80, 255),
           {
               { RCAREA_HYRULE_FIELD, "Plaine d'Hyrule" },
-              { RCAREA_MARKET, "Bourg d'Hyrule" },
+              { RCAREA_MARKET, "Place du Marché" },
               { RCAREA_HYRULE_CASTLE, "Château d'Hyrule" },
               { RCAREA_LON_LON_RANCH, "Ranch Lon Lon" },
               { RCAREA_GANONS_CASTLE, "Château de Ganon" },
@@ -682,7 +682,14 @@ void DrawCheckRow(const Row& row, float width) {
 
     if (expanded) {
         // Full location name and the skip / restore button.
-        const std::string fullName = Rando::StaticData::GetLocation(row.rc)->GetName();
+        // Full name: area + check in French, the native long name otherwise.
+        std::string fullName;
+        const AreaDef* areaDef = AreaDefFor(sDetailArea);
+        if (IsFrench() && areaDef != nullptr) {
+            fullName = AreaName(*areaDef) + " : " + label;
+        } else {
+            fullName = Rando::StaticData::GetLocation(row.rc)->GetName();
+        }
         ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + width);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.75f, 0.8f, 1.0f));
         ImGui::Indent(10.0f);

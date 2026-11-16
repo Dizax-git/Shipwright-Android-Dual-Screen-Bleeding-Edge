@@ -459,6 +459,38 @@ void SohMenu::AddMenuSettings() {
         .HideInSearch(true)
         .Options(WindowButtonOptions().Tooltip("Enables the separate Bindings Window."));
 
+    // Gyro aiming (Thor build): the same settings as in the bindings' Gyro section,
+    // here so the menu search finds them ("gyro").
+    path.column = SECTION_COLUMN_2;
+    AddWidget(path, "Gyro Aiming", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Gyro Horizontal Sensitivity", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("Gyro.SensitivityX"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().IsPercentage().Min(0.1f).Max(5.0f).Step(0.05f).DefaultValue(1.0f).Tooltip(
+            "How fast the aim turns left/right when you turn the console (first person and aiming)."));
+    AddWidget(path, "Gyro Vertical Sensitivity", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("Gyro.SensitivityY"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().IsPercentage().Min(0.1f).Max(5.0f).Step(0.05f).DefaultValue(1.0f).Tooltip(
+            "How fast the aim moves up/down when you tilt the console."));
+    AddWidget(path, "Invert Horizontal Gyro", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("Gyro.InvertX"))
+        .RaceDisable(false);
+    AddWidget(path, "Invert Vertical Gyro", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("Gyro.InvertY"))
+        .RaceDisable(false);
+    AddWidget(path, "Gyro Deadband (degrees per second)", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("Gyro.Deadband"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().Format("%.1f").Min(0.0f).Max(10.0f).Step(0.1f).DefaultValue(0.6f).Tooltip(
+            "Movements slower than this are ignored. Raise it if the aim drifts while the console is still."));
+    AddWidget(path, "Gyro Smoothing", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("Gyro.Smoothing"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().IsPercentage().Min(0.0f).Max(0.9f).Step(0.05f).DefaultValue(0.0f).Tooltip(
+            "Evens out shaky hands, at the cost of a little delay. 0% = raw gyro."));
+    path.column = SECTION_COLUMN_1;
+
     // Input Viewer
     path.sidebarName = "Input Viewer";
     AddSidebarEntry("Settings", path.sidebarName, 3);
