@@ -342,15 +342,27 @@ bool HasFresh() {
 
 // ---- drawing ----
 
+// gameScale: size of the game letters (0 = by role: titles > lists > details).
 void ShadowText(ImDrawList* dl, ImFont* font, float size, ImVec2 pos, ImU32 color, const char* text,
-                float clipRight = FLT_MAX) {
-    const ImVec4 clip(pos.x - 4.0f, pos.y - 4.0f, clipRight, pos.y + size * 2.0f);
+                float clipRight = FLT_MAX, float gameScale = 0.0f) {
+    const ImVec4 clip(pos.x - 4.0f, pos.y - size, clipRight, pos.y + size * 2.5f);
+    if (GameFont::Enabled()) {
+        const float scale = gameScale > 0.0f ? gameScale : GameFont::RoleScale(size);
+        if (GameFont::Draw(dl, font, size, ImVec2(pos.x + 1.5f, pos.y + 1.5f), IM_COL32(0, 0, 0, 200), text, scale,
+                           clipRight == FLT_MAX ? nullptr : &clip)) {
+            GameFont::Draw(dl, font, size, pos, color, text, scale, clipRight == FLT_MAX ? nullptr : &clip);
+            return;
+        }
+    }
     dl->AddText(font, size, ImVec2(pos.x + 1.5f, pos.y + 1.5f), IM_COL32(0, 0, 0, 200), text, nullptr, 0.0f,
                 clipRight == FLT_MAX ? nullptr : &clip);
     dl->AddText(font, size, pos, color, text, nullptr, 0.0f, clipRight == FLT_MAX ? nullptr : &clip);
 }
 
-float TextWidth(ImFont* font, float size, const char* text) {
+float TextWidth(ImFont* font, float size, const char* text, float gameScale = 0.0f) {
+    if (GameFont::Enabled()) {
+        return GameFont::Width(font, size, text, gameScale > 0.0f ? gameScale : GameFont::RoleScale(size));
+    }
     return font->CalcTextSizeA(size, FLT_MAX, 0.0f, text).x;
 }
 
@@ -473,9 +485,9 @@ void DrawHeader() {
         }
         float x = max.x - 7.0f;
         if (number[0] != '\0') {
-            x -= TextWidth(big, numberSize, number);
+            x -= TextWidth(big, numberSize, number, 1.0f);
             ShadowText(dl, big, numberSize, ImVec2(x, min.y + (buttonH - numberSize) * 0.5f - 1.0f), badgeColor,
-                       number);
+                       number, FLT_MAX, 1.0f);
         }
         if (badgeIcon != nullptr) {
             x -= TextWidth(big, iconSize, badgeIcon) + (number[0] != '\0' ? 4.0f : 0.0f);
@@ -793,14 +805,15 @@ void DrawCheckRow(const Row& row, float width) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.75f, 0.8f, 1.0f));
         ImGui::Indent(10.0f);
         ImGui::PushFont(big);
-        ImGui::TextWrapped("%s", fullName.c_str());
+        WrappedText(fullName.c_str());
         if (row.state == State::OtherAge) {
             // Why it is lavender: the logic needs the other age.
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(kColOtherAge));
-            ImGui::TextWrapped("%s %s", ICON_FA_HOURGLASS_HALF,
-                               IsAdultNow() ? Label("Needs you to be a child.", "Nur als Kind.", "Faisable en enfant.")
-                                            : Label("Needs you to be an adult.", "Nur als Erwachsener.",
-                                                    "Faisable en adulte."));
+            const std::string ageHint =
+                std::string(ICON_FA_HOURGLASS_HALF " ") +
+                (IsAdultNow() ? Label("Needs you to be a child.", "Nur als Kind.", "Faisable en enfant.")
+                              : Label("Needs you to be an adult.", "Nur als Erwachsener.", "Faisable en adulte."));
+            WrappedText(ageHint.c_str());
             ImGui::PopStyleColor();
         }
         ImGui::PopFont();
@@ -870,14 +883,15 @@ void DrawDetail() {
         std::snprintf(counts, sizeof(counts), "%d/%d", stats.done, stats.total);
         const float countsW = TextWidth(big, 17.0f, counts);
         ShadowText(dl, big, 17.0f, ImVec2(tMax.x - countsW - 8.0f, tMin.y + 14.0f), kColSubText, counts);
+        // Area name: the page title, as big as its strip allows.
         ShadowText(dl, huge, 22.0f, ImVec2(tMin.x + 44.0f, tMin.y + 11.0f), kColText, name.c_str(),
-                   tMax.x - countsW - 16.0f);
+                   tMax.x - countsW - 16.0f, 1.4f);
     }
 
     if (!stats.spoiled) {
         ImGui::Dummy(ImVec2(0.0f, 8.0f));
         ImGui::PushFont(big);
-        ImGui::TextWrapped("%s", Label("Enter this dungeon (or find its map) to reveal its checks.",
+        WrappedText(Label("Enter this dungeon (or find its map) to reveal its checks.",
                                        "Betritt dieses Dungeon, um seine Checks zu sehen.",
                                        "Entre dans ce donjon (ou trouve sa carte) pour voir ses checks."));
         ImGui::PopFont();
@@ -908,7 +922,7 @@ void DrawDetail() {
     }
     if (rows.empty()) {
         ImGui::PushFont(big);
-        ImGui::TextWrapped("%s", Label("Nothing to check here with this seed's settings.",
+        WrappedText(Label("Nothing to check here with this seed's settings.",
                                        "Hier gibt es mit diesen Einstellungen nichts.",
                                        "Rien à fouiller ici avec les règles de cette seed."));
         ImGui::PopFont();
@@ -920,7 +934,7 @@ void DrawDetail() {
 void Draw(bool ready) {
     if (!ready) {
         ImGui::PushFont(BigFont());
-        ImGui::TextWrapped("%s", Label("Waiting for a save to load...", "Warte auf einen Spielstand...",
+        WrappedText(Label("Waiting for a save to load...", "Warte auf einen Spielstand...",
                                        "En attente du chargement d'une partie..."));
         ImGui::PopFont();
         return;

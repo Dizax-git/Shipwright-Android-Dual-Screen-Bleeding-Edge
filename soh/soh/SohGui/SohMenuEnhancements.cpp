@@ -765,6 +765,11 @@ void SohMenu::AddMenuEnhancements() {
         .CVar(CVAR_ENHANCEMENT("DualScreenTrackerScale"))
         .Options(FloatSliderOptions().Min(1.5f).Max(3.0f).DefaultValue(2.0f).Format("%.1fx").Tooltip(
             "Size of the trackers on the secondary display."));
+    AddWidget(path, "Bottom Screen: Game Font", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("DualScreenGameFont"))
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Writes the bottom-screen trackers with the game's own dialogue font (HD texture pack "
+            "version when installed). Off: interface font."));
     AddWidget(path, "Bottom Screen: Maps & Compasses", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("DualScreenTrackerMaps"))
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(

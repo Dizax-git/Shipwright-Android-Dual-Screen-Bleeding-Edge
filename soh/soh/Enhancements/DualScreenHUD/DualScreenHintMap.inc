@@ -400,7 +400,7 @@ void DrawPanel(const Spot& spot, ImVec2 min, ImVec2 size) {
         ImGui::PushTextWrapPos(p.x + width - pad);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.78f, 0.84f, 1.0f));
         ImGui::PushFont(big);
-        ImGui::TextWrapped("%s", Label("No hint read about this place yet.",
+        WrappedText(Label("No hint read about this place yet.",
                                        "Noch kein Hinweis zu diesem Ort gelesen.",
                                        "Aucun indice lu sur ce lieu pour l'instant."));
         ImGui::PopFont();
@@ -439,7 +439,7 @@ void Draw(bool ready) {
     }
     if (!ready) {
         ImGui::PushFont(BigFont());
-        ImGui::TextWrapped("%s", Label("Waiting for a randomizer save to load...", "Warte auf einen Spielstand...",
+        WrappedText(Label("Waiting for a randomizer save to load...", "Warte auf einen Spielstand...",
                                        "En attente du chargement d'une partie randomizer..."));
         ImGui::PopFont();
         return;

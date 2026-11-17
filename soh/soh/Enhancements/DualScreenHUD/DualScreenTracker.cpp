@@ -45,6 +45,10 @@ extern "C" {
 #include "macros.h"
 }
 
+// Game font: glyph textures and widths (z_kanfont.c, z_message_PAL.c).
+extern "C" const char* fontTbl[140];
+extern "C" f32 sFontWidths[144];
+
 // Defined in randomizer_item_tracker.cpp.
 void ItemTracker_DrawEmbedded();
 
@@ -62,6 +66,7 @@ bool DualScreenTracker_IsEnabled(void) {
 #include <GLES3/gl3.h>
 #include <android/log.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_internal.h>
 #include <jni.h>
 
 namespace {
@@ -263,6 +268,410 @@ void DrawNavi(ImDrawList* drawList, ImVec2 center, int alpha) {
                        IM_COL32(255, 255, 255, alpha));
 }
 
+// ---- Game font (the dialogue font of the game, nes_font_static) ----
+// The bottom screen writes with the game's own letters: the HD texture pack
+// version when there is one (alt/), otherwise the original 16x16 glyphs.
+// Each pixel size gets one atlas of the 140 glyphs, built at the exact size it
+// is drawn at (the GUI samples at the nearest texel). Atlases are built in
+// DualScreenTracker_PrepareResources (main GL context); until one is ready,
+// the text falls back to the interface font for that frame.
+namespace GameFont {
+
+constexpr int kGlyphCount = 140;
+constexpr int kAtlasCols = 16;
+constexpr int kAtlasRows = 9;
+// Caps sit between 7 % and 77 % of the 16x16 cell: the cap line is matched with
+// the interface font so text keeps its place, then scaled by role.
+constexpr float kCapTop = 0.07f;
+constexpr float kCapHeight = 0.70f;
+constexpr float kSpacing = 0.88f; // a bit tighter than the dialogue boxes
+constexpr float kLigature = 0.72f; // "oe": the o overlaps the e
+
+enum class AtlasState { Requested, Ready, Failed };
+std::unordered_map<int, AtlasState> sAtlases;
+int sAvailable = -1; // can the glyphs be loaded at all?
+
+bool Enabled() {
+    return CVarGetInteger(CVAR_ENHANCEMENT("DualScreenGameFont"), 1) != 0 && sAvailable != 0;
+}
+
+// Text role: titles bigger than lists, lists a little bigger than details.
+float RoleScale(float size) {
+    if (size >= 20.0f) {
+        return 1.2f;
+    }
+    if (size >= 17.0f) {
+        return 1.05f;
+    }
+    return 1.0f;
+}
+
+// UTF-8 -> game character (0x20-0xAB), 0x100 + code for the "oe" ligature
+// halves, or -1 when the game font has no such letter.
+int Decode(const char*& p, const char* end, unsigned int& codepoint) {
+    const unsigned char c = static_cast<unsigned char>(*p);
+    int len = 1;
+    codepoint = c;
+    if (c >= 0xF0 && p + 3 < end) {
+        codepoint = ((c & 0x07) << 18) | ((p[1] & 0x3F) << 12) | ((p[2] & 0x3F) << 6) | (p[3] & 0x3F);
+        len = 4;
+    } else if (c >= 0xE0 && p + 2 < end) {
+        codepoint = ((c & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+        len = 3;
+    } else if (c >= 0xC0 && p + 1 < end) {
+        codepoint = ((c & 0x1F) << 6) | (p[1] & 0x3F);
+        len = 2;
+    }
+    p += len;
+    if (codepoint >= 0x20 && codepoint < 0x7F) {
+        return static_cast<int>(codepoint);
+    }
+    switch (codepoint) {
+        case 0x00C0: return 0x80; // À
+        case 0x00EE: return 0x81; // î
+        case 0x00C2: return 0x82; // Â
+        case 0x00C4: return 0x83; // Ä
+        case 0x00C7: return 0x84; // Ç
+        case 0x00C8: return 0x85; // È
+        case 0x00C9: return 0x86; // É
+        case 0x00CA: return 0x87; // Ê
+        case 0x00CB: return 0x88; // Ë
+        case 0x00CF: return 0x89; // Ï
+        case 0x00D4: return 0x8A; // Ô
+        case 0x00D6: return 0x8B; // Ö
+        case 0x00D9: return 0x8C; // Ù
+        case 0x00DB: return 0x8D; // Û
+        case 0x00DC: return 0x8E; // Ü
+        case 0x00DF: return 0x8F; // ß
+        case 0x00E0: return 0x90; // à
+        case 0x00E1: return 0x91; // á
+        case 0x00E2: return 0x92; // â
+        case 0x00E4: return 0x93; // ä
+        case 0x00E7: return 0x94; // ç
+        case 0x00E8: return 0x95; // è
+        case 0x00E9: return 0x96; // é
+        case 0x00EA: return 0x97; // ê
+        case 0x00EB: return 0x98; // ë
+        case 0x00EF: return 0x99; // ï
+        case 0x00F4: return 0x9A; // ô
+        case 0x00F6: return 0x9B; // ö
+        case 0x00F9: return 0x9C; // ù
+        case 0x00FB: return 0x9D; // û
+        case 0x00FC: return 0x9E; // ü
+        case 0x2019: return '\''; // ’
+        case 0x2018: return '\'';
+        case 0x00A0: return ' ';
+        default: return -1;
+    }
+}
+
+// Pieces of a text: either one game glyph or one interface-font codepoint.
+struct Piece {
+    int glyph;         // 0x20-0xAB, or -1 for the interface font
+    float advanceMul;  // ligature: the first half overlaps the second
+    const char* begin; // interface font run (one codepoint)
+    const char* end;
+};
+
+template <typename Fn> void ForEachPiece(const char* text, const char* textEnd, Fn&& fn) {
+    const char* p = text;
+    while (p < textEnd && *p != 0) {
+        const char* start = p;
+        unsigned int cp = 0;
+        const int g = Decode(p, textEnd, cp);
+        if (g >= 0) {
+            fn(Piece{ g, 1.0f, start, p });
+        } else if (cp == 0x0153 || cp == 0x0152) { // œ / Œ: written o + e like the game would
+            const bool upper = cp == 0x0152;
+            fn(Piece{ upper ? 'O' : 'o', kLigature, start, p });
+            fn(Piece{ upper ? 'E' : 'e', 1.0f, start, p });
+        } else {
+            fn(Piece{ -1, 1.0f, start, p });
+        }
+    }
+}
+
+float GlyphAdvance(int glyph, float cell) {
+    return sFontWidths[glyph - ' '] * cell / 16.0f * kSpacing;
+}
+
+int AtlasPx(float cell) {
+    const int px = static_cast<int>(std::lround(cell * GetUiScale()));
+    return std::clamp((px + 1) & ~1, 8, 128);
+}
+
+// Atlas texture for this pixel size, or nullptr (then asked for next frame).
+ImTextureID Atlas(int px) {
+    auto it = sAtlases.find(px);
+    if (it == sAtlases.end()) {
+        sAtlases[px] = AtlasState::Requested;
+        return nullptr;
+    }
+    if (it->second != AtlasState::Ready) {
+        return nullptr;
+    }
+    char name[24];
+    std::snprintf(name, sizeof(name), "DST_FONT_%d", px);
+    return Tex(name);
+}
+
+// Width of a text in logical pixels. size = interface font size it replaces.
+float Width(ImFont* font, float size, const char* text, float scale) {
+    const float cell = size * scale;
+    float w = 0.0f;
+    ForEachPiece(text, text + std::strlen(text), [&](const Piece& piece) {
+        if (piece.glyph >= 0) {
+            w += GlyphAdvance(piece.glyph, cell) * piece.advanceMul;
+        } else {
+            w += font->CalcTextSizeA(size, FLT_MAX, 0.0f, piece.begin, piece.end).x;
+        }
+    });
+    return w;
+}
+
+// Draws like ImDrawList::AddText(font, size, pos, ...): same cap line centre,
+// letters scaled by `scale`. Returns false if the atlas is not ready yet.
+bool Draw(ImDrawList* dl, ImFont* font, float size, ImVec2 pos, ImU32 color, const char* text, float scale,
+          const ImVec4* clip = nullptr) {
+    const float cell = size * scale;
+    const int px = AtlasPx(cell);
+    ImTextureID atlas = Atlas(px);
+    if (atlas == nullptr) {
+        return false;
+    }
+    const float uiScale = GetUiScale();
+    const float drawCell = px / uiScale; // exact texel size on screen
+    // Cap centre of the interface font at this size, and of the game glyphs.
+    const float ascent = font->Ascent * size / font->FontSize;
+    const float capCentre = pos.y + ascent - kCapHeight * size * 0.5f;
+    const float top = std::round((capCentre - (kCapTop + kCapHeight * 0.5f) * drawCell) * uiScale) / uiScale;
+    if (clip != nullptr) {
+        dl->PushClipRect(ImVec2(clip->x, clip->y), ImVec2(clip->z, clip->w), true);
+    }
+    float x = pos.x;
+    const float uw = 1.0f / kAtlasCols;
+    const float uh = 1.0f / kAtlasRows;
+    ForEachPiece(text, text + std::strlen(text), [&](const Piece& piece) {
+        if (piece.glyph >= 0) {
+            const int idx = piece.glyph - ' ';
+            if (piece.glyph != ' ') {
+                const float gx = std::round(x * uiScale) / uiScale;
+                const ImVec2 uv0((idx % kAtlasCols) * uw, (idx / kAtlasCols) * uh);
+                dl->AddImage(atlas, ImVec2(gx, top), ImVec2(gx + drawCell, top + drawCell), uv0,
+                             ImVec2(uv0.x + uw, uv0.y + uh), color);
+            }
+            x += GlyphAdvance(piece.glyph, cell) * piece.advanceMul;
+        } else {
+            dl->AddText(font, size, ImVec2(x, pos.y), color, piece.begin, piece.end);
+            x += font->CalcTextSizeA(size, FLT_MAX, 0.0f, piece.begin, piece.end).x;
+        }
+    });
+    if (clip != nullptr) {
+        dl->PopClipRect();
+    }
+    return true;
+}
+
+// One glyph of the game, as RGBA at its source size (HD pack or original).
+bool LoadGlyph(int idx, std::vector<uint8_t>& rgba, int& w, int& h) {
+    auto rm = Ship::Context::GetRawInstance()->GetResourceManager();
+    const std::string path = fontTbl[idx];
+    std::shared_ptr<Fast::Texture> tex;
+    if (ResourceMgr_IsAltAssetsEnabled() && ResourceMgr_FileAltExists(path.c_str())) {
+        const std::string altPath = "alt/" + (path.rfind("__OTR__", 0) == 0 ? path.substr(7) : path);
+        tex = std::dynamic_pointer_cast<Fast::Texture>(rm->LoadResource(altPath, true));
+        if (tex != nullptr && (tex->ImageData == nullptr || tex->Width == 0 ||
+                               tex->ImageDataSize < static_cast<uint32_t>(tex->Width) * tex->Height * 4)) {
+            tex = nullptr;
+        }
+        if (tex != nullptr) {
+            w = tex->Width;
+            h = tex->Height;
+            rgba.assign(tex->ImageData, tex->ImageData + static_cast<size_t>(w) * h * 4);
+            return true;
+        }
+    }
+    tex = std::dynamic_pointer_cast<Fast::Texture>(rm->LoadResource(path, true));
+    if (tex == nullptr || tex->ImageData == nullptr || tex->Width == 0) {
+        return false;
+    }
+    w = tex->Width;
+    h = tex->Height;
+    const size_t count = static_cast<size_t>(w) * h;
+    rgba.assign(count * 4, 0xFF);
+    if ((tex->Flags & TEX_FLAG_LOAD_AS_RAW) != 0 && tex->ImageDataSize >= count * 4) {
+        rgba.assign(tex->ImageData, tex->ImageData + count * 4);
+    } else if (tex->ImageDataSize >= count / 2) { // I4: two pixels per byte, intensity = coverage
+        for (size_t i = 0; i < count; i++) {
+            const uint8_t b = tex->ImageData[i / 2];
+            const uint8_t v = (i % 2 == 0) ? (b >> 4) : (b & 0x0F);
+            rgba[i * 4 + 3] = static_cast<uint8_t>(v * 17);
+        }
+    } else {
+        return false;
+    }
+    return true;
+}
+
+// Resamples a glyph to px x px: area average when shrinking (HD pack), nearest
+// when growing (the original pixel font stays pixel art). Colour is weighted
+// by coverage so the edges do not darken.
+void Resample(const std::vector<uint8_t>& src, int w, int h, int px, std::vector<uint8_t>& atlas, int atlasW,
+              int ox, int oy) {
+    const float sx = static_cast<float>(w) / px;
+    const float sy = static_cast<float>(h) / px;
+    for (int y = 0; y < px; y++) {
+        for (int x = 0; x < px; x++) {
+            int xa = static_cast<int>(x * sx);
+            int ya = static_cast<int>(y * sy);
+            int xb = std::max(xa + 1, static_cast<int>((x + 1) * sx));
+            int yb = std::max(ya + 1, static_cast<int>((y + 1) * sy));
+            float acc[4] = { 0, 0, 0, 0 };
+            int n = 0;
+            for (int yy = ya; yy < yb && yy < h; yy++) {
+                for (int xx = xa; xx < xb && xx < w; xx++) {
+                    const uint8_t* p = &src[(static_cast<size_t>(yy) * w + xx) * 4];
+                    const float a = p[3] / 255.0f;
+                    acc[0] += p[0] * a;
+                    acc[1] += p[1] * a;
+                    acc[2] += p[2] * a;
+                    acc[3] += a;
+                    n++;
+                }
+            }
+            uint8_t* out = &atlas[(static_cast<size_t>(oy + y) * atlasW + ox + x) * 4];
+            for (int c = 0; c < 3; c++) {
+                out[c] = acc[3] > 0.0f ? static_cast<uint8_t>(std::clamp(acc[c] / acc[3], 0.0f, 255.0f)) : 255;
+            }
+            out[3] = n > 0 ? static_cast<uint8_t>(std::clamp(acc[3] / n * 255.0f + 0.5f, 0.0f, 255.0f)) : 0;
+        }
+    }
+}
+
+void UploadAtlas(Fast::Fast3dGui* gui, int px, std::vector<std::vector<uint8_t>>& glyphs,
+                 const std::vector<std::pair<int, int>>& sizes) {
+    const int atlasW = px * kAtlasCols;
+    const int atlasH = px * kAtlasRows;
+    std::vector<uint8_t> atlas(static_cast<size_t>(atlasW) * atlasH * 4, 0);
+    for (int i = 0; i < kGlyphCount; i++) {
+        if (!glyphs[i].empty()) {
+            Resample(glyphs[i], sizes[i].first, sizes[i].second, px, atlas, atlasW, (i % kAtlasCols) * px,
+                     (i / kAtlasCols) * px);
+        }
+    }
+    Fast::Texture tex;
+    tex.Type = Fast::TextureType::RGBA32bpp;
+    tex.Width = static_cast<uint16_t>(atlasW);
+    tex.Height = static_cast<uint16_t>(atlasH);
+    tex.ImageDataSize = static_cast<uint32_t>(atlas.size());
+    auto buffer = std::make_shared<std::vector<char>>(atlas.begin(), atlas.end());
+    tex.mImageBuffer = buffer;
+    tex.ImageData = reinterpret_cast<uint8_t*>(buffer->data());
+    char name[24];
+    std::snprintf(name, sizeof(name), "DST_FONT_%d", px);
+    gui->LoadGuiTexture(name, tex, "", ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+}
+
+// Main GL context: builds the atlases asked for during the last frame.
+void BuildRequestedAtlases(Fast::Fast3dGui* gui) {
+    static std::vector<std::vector<uint8_t>> sGlyphs;
+    static std::vector<std::pair<int, int>> sSizes;
+    bool pending = false;
+    for (const auto& entry : sAtlases) {
+        pending |= entry.second == AtlasState::Requested;
+    }
+    if (!pending && sAvailable >= 0) {
+        return;
+    }
+    if (sAvailable < 0) {
+        sGlyphs.assign(kGlyphCount, {});
+        sSizes.assign(kGlyphCount, { 0, 0 });
+        for (int i = 0; i < kGlyphCount; i++) {
+            if (!LoadGlyph(i, sGlyphs[i], sSizes[i].first, sSizes[i].second)) {
+                sGlyphs[i].clear();
+            }
+        }
+        sAvailable = sGlyphs['A' - ' '].empty() ? 0 : 1;
+        if (sAvailable == 0) {
+            __android_log_print(ANDROID_LOG_WARN, kLogTag, "Game font glyphs not found: interface font kept");
+        }
+    }
+    for (auto& entry : sAtlases) {
+        if (entry.second != AtlasState::Requested) {
+            continue;
+        }
+        if (sAvailable == 0) {
+            entry.second = AtlasState::Failed;
+            continue;
+        }
+        UploadAtlas(gui, entry.first, sGlyphs, sSizes);
+        entry.second = AtlasState::Ready;
+    }
+}
+
+} // namespace GameFont
+
+// Wrapped paragraph in the current ImGui font size and text colour (game font
+// when it is on), like ImGui::TextWrapped("%s", text).
+void WrappedText(const char* text) {
+    ImFont* font = ImGui::GetFont();
+    const float size = ImGui::GetFontSize();
+    if (!GameFont::Enabled()) {
+        ImGui::TextWrapped("%s", text);
+        return;
+    }
+    const float scale = GameFont::RoleScale(size);
+    const ImVec2 start = ImGui::GetCursorScreenPos();
+    const float wrapWidth = std::max(40.0f, ImGui::CalcWrapWidthForPos(start, 0.0f));
+    const float lineHeight = size * std::max(1.0f, scale) * 1.22f;
+    const ImU32 color = ImGui::GetColorU32(ImGuiCol_Text);
+    // Greedy word wrap on spaces.
+    std::vector<std::string> lines;
+    std::string line;
+    const char* p = text;
+    while (*p != 0) {
+        const char* wordEnd = p;
+        while (*wordEnd != 0 && *wordEnd != ' ' && *wordEnd != '\n') {
+            wordEnd++;
+        }
+        const std::string word(p, wordEnd);
+        const std::string candidate = line.empty() ? word : line + " " + word;
+        if (!line.empty() && GameFont::Width(font, size, candidate.c_str(), scale) > wrapWidth) {
+            lines.push_back(line);
+            line = word;
+        } else {
+            line = candidate;
+        }
+        p = wordEnd;
+        if (*p == '\n') {
+            lines.push_back(line);
+            line.clear();
+            p++;
+        } else if (*p == ' ') {
+            p++;
+        }
+    }
+    if (!line.empty()) {
+        lines.push_back(line);
+    }
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    float y = start.y;
+    bool drawn = true;
+    for (const std::string& l : lines) {
+        const ImVec2 pos(start.x, y + (lineHeight - size) * 0.5f);
+        drawn &= GameFont::Draw(dl, font, size, ImVec2(pos.x + 1.5f, pos.y + 1.5f), IM_COL32(0, 0, 0, 200),
+                                l.c_str(), scale);
+        GameFont::Draw(dl, font, size, pos, color, l.c_str(), scale);
+        y += lineHeight;
+    }
+    if (!drawn) {
+        // Atlas not ready yet (first frame at this size): interface font once.
+        ImGui::TextWrapped("%s", text);
+        return;
+    }
+    ImGui::Dummy(ImVec2(wrapWidth, std::max(lineHeight, y - start.y)));
+}
+
 // Game-style text box (the dialogue box texture, mirrored for its right half).
 void DrawTextbox(ImDrawList* drawList, ImVec2 min, ImVec2 max, ImU32 color) {
     ImTextureID box = Tex("DST_MSG_BG");
@@ -316,11 +725,22 @@ void DrawTabButton(const char* label, TrackerTab tab, float width, float height,
     DrawTextbox(drawList, min, max, selected ? IM_COL32(20, 20, 60, 235) : IM_COL32(0, 0, 0, 190));
     ImFont* font = HugeFont();
     const float fontSize = 23.0f;
-    const ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label);
-    const ImVec2 textPos(min.x + (width - textSize.x) * 0.5f, min.y + (height - textSize.y) * 0.5f);
-    drawList->AddText(font, fontSize, ImVec2(textPos.x + 2.0f, textPos.y + 2.0f), IM_COL32(0, 0, 0, 200), label);
-    drawList->AddText(font, fontSize, textPos, selected ? IM_COL32(255, 255, 120, 255) : IM_COL32(200, 200, 200, 255),
-                      label);
+    const ImU32 labelColor = selected ? IM_COL32(255, 255, 120, 255) : IM_COL32(200, 200, 200, 255);
+    // Game font: tab titles big, like the pause menu headings.
+    constexpr float kTabTitleScale = 1.3f;
+    const bool gameFont = GameFont::Enabled();
+    const float labelWidth = gameFont ? GameFont::Width(font, fontSize, label, kTabTitleScale)
+                                      : font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label).x;
+    const float labelHeight = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label).y;
+    const ImVec2 textPos(min.x + (width - labelWidth) * 0.5f, min.y + (height - labelHeight) * 0.5f);
+    if (!gameFont ||
+        !GameFont::Draw(drawList, font, fontSize, ImVec2(textPos.x + 2.0f, textPos.y + 2.0f), IM_COL32(0, 0, 0, 200),
+                        label, kTabTitleScale)) {
+        drawList->AddText(font, fontSize, ImVec2(textPos.x + 2.0f, textPos.y + 2.0f), IM_COL32(0, 0, 0, 200), label);
+        drawList->AddText(font, fontSize, textPos, labelColor, label);
+    } else {
+        GameFont::Draw(drawList, font, fontSize, textPos, labelColor, label, kTabTitleScale);
+    }
     if (selected) {
         DrawPauseCursor(drawList, min, max);
     } else if (notify) {
@@ -375,7 +795,13 @@ void DrawTrackerUi() {
         DrawTextbox(drawList, barMin, barMax, IM_COL32(0, 0, 0, 200));
 
         const float textY = barMin.y + (barHeight - textSize) * 0.5f;
+        const bool gameFont = GameFont::Enabled();
         auto shadowText = [&](ImVec2 pos, ImU32 color, const char* text) {
+            if (gameFont && GameFont::Draw(drawList, font, textSize, ImVec2(pos.x + 2.0f, pos.y + 2.0f),
+                                           IM_COL32(0, 0, 0, 220), text, 1.0f)) {
+                GameFont::Draw(drawList, font, textSize, pos, color, text, 1.0f);
+                return;
+            }
             drawList->AddText(font, textSize, ImVec2(pos.x + 2.0f, pos.y + 2.0f), IM_COL32(0, 0, 0, 220), text);
             drawList->AddText(font, textSize, pos, color, text);
         };
@@ -384,7 +810,8 @@ void DrawTrackerUi() {
 
         const ImU32 clockColor = isNight ? IM_COL32(150, 180, 255, 255) : IM_COL32(255, 220, 100, 255);
         const float iconSize = textSize;
-        const float clockWidth = font->CalcTextSizeA(textSize, FLT_MAX, 0.0f, clock).x;
+        const float clockWidth = gameFont ? GameFont::Width(font, textSize, clock, 1.0f)
+                                          : font->CalcTextSizeA(textSize, FLT_MAX, 0.0f, clock).x;
         const float clockX = barMax.x - 20.0f - clockWidth;
         ImTextureID clockIcon = Tex("DST_CLOCK");
         if (clockIcon != nullptr) {
@@ -592,11 +1019,14 @@ void LoadWorldMapTextures(Fast::Fast3dGui* gui) {
 } // namespace
 
 void DualScreenTracker_PrepareResources() {
-    if (sTexturesLoaded) {
-        return;
-    }
     auto gui = std::dynamic_pointer_cast<Fast::Fast3dGui>(Ship::Context::GetRawInstance()->GetWindow()->GetGui());
     if (gui == nullptr) {
+        return;
+    }
+    if (CVarGetInteger(CVAR_ENHANCEMENT("DualScreenGameFont"), 1) != 0) {
+        GameFont::BuildRequestedAtlases(gui.get());
+    }
+    if (sTexturesLoaded) {
         return;
     }
     const ImVec4 white(1.0f, 1.0f, 1.0f, 1.0f);
