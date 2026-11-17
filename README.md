@@ -1,166 +1,94 @@
-# Shipwright Android Dual Screen — Bleeding Edge
+# SoH Dual Screen Rando
 
-This is an **unofficial Android dual-screen port** of [HarbourMasters/Shipwright](https://github.com/HarbourMasters/Shipwright). It keeps the dual-screen implementation from [chilhaps/Shipwright-Android-Dual-Screen](https://github.com/chilhaps/Shipwright-Android-Dual-Screen), adapts it to the current renderer, and layers it over the newest validated **stable** Shipwright release with the modern Android compatibility work derived from [please-be-nice/Shipwright-android](https://github.com/please-be-nice/Shipwright-android).
+Ship of Harkinian build for the AYN Thor, with a rando tracker on the bottom screen.
 
-“Bleeding Edge” means this repository is intended to follow the latest stable upstream Shipwright release. It does not use Shipwright development/nightly builds as its release base.
+I play OoT rando on my Thor and I wanted the second screen to actually be useful, so I made this. The game runs on the top screen, and the bottom screen shows your items, a hint map and the list of checks you can do right now (using the rando logic). It uses the game's font and textures, so it doesn't look like an app glued under the game.
 
-Current base: Shipwright `9.3.0` (`ecd889c2019b87e78b0a3d942a6a3fe98b7efaed`), including its official Torch asset pipeline. The exact source and submodule lineage is recorded in [Android provenance](docs/android/PROVENANCE.md), and build evidence is recorded in [Android validation](docs/android/VALIDATION.md).
+Based on SoH 9.3.1 and on Darkaxt's dual screen port.
 
-## Download and game setup
+![SoH Dual Screen Rando on the AYN Thor](docs/thor/screenshots/hero.jpg)
 
-Download the persistently signed arm64 APK from [GitHub Releases](https://github.com/Darkaxt/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases). Release APKs use package `com.dishii.soh` and signer SHA-256 `5db60116997ae5cf8ea0f26fee6c0a150a8045a7cbfc10282892ff10c0348004`, so later releases can update an existing installation without changing signer identity.
+*Screenshots with the [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded-SoH) HD pack.*
 
-The APK contains the complete Android application, but it does **not** contain copyrighted Ocarina of Time game data and cannot play the game by itself. On first launch:
+[Download](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases/latest) · [Install](#install) · [Credits](#credits) · [Français](#français)
 
-1. Grant the app-specific file-access permission requested by Android.
-2. Let the app prepare its files under the device's `SOH` folder.
-3. Select a supported, legally obtained Ocarina of Time ROM when prompted. Android accepts a raw `.z64` or a `.zip`/`.7z` archive directly. For an archive, the app scans every `.z64` entry and imports only when exactly one matches the official supported hash list. The app processes the verified ROM locally into the required game archive. Alternatively, provide an already generated compatible `oot.o2r` or `oot-mq.o2r` in the `SOH` folder.
+## What's on the bottom screen
 
-The ROM, generated game archive, and saves remain user-owned content and are not included in this repository or its releases.
+| Items | Hints | Checks |
+| --- | --- | --- |
+| ![Items](docs/thor/screenshots/items.png) | ![Hints](docs/thor/screenshots/hints.png) | ![Checks](docs/thor/screenshots/checks.png) |
 
-## Android dual-screen build
-
-The Android app targets `arm64-v8a` with package `com.dishii.soh`. From the `Android` directory, run:
-
-```powershell
-.\gradlew.bat :app:testReleaseUnitTest :app:assembleRelease
-```
-
-The APK produced directly by Gradle is intentionally unsigned. If you build from source, sign it with your own persistent Android identity; a self-signed build cannot update over the downloadable release unless it uses the same private identity. Release APKs are signed separately with the repository's persistent release identity. The private signing key, ROMs, generated game OTR/O2R files, saves, and other copyrighted game payloads are never published.
-
-Dual-screen routing is enabled by default on supported Android devices. On the AYN Thor, gameplay and menus remain on the upper display while the gameplay HUD and touch-controller overlay use the lower display. The eye button hides the controller layer for physical-controller play without disabling the lower HUD. If no suitable secondary presentation display exists, both the normal HUD and touch controller safely return to the primary display.
-
-### Traditional controller layout
-
-This port adds an optional **modifier + left stick** C-button layer under **Settings > Controls > Modifier Buttons**. Enable it and select M1 or M2; while that modifier is held, the left stick presses C-Left, C-Right, C-Up, or C-Down instead of moving Link. The feature uses dominant-axis selection plus hysteresis, so diagonal input produces one stable C-button rather than two flickering inputs.
-
-The included `scripts/android/Set-TraditionalControllerLayout.ps1` applies this Xbox-style profile to an existing `shipofharkinian.json` while preserving keyboard mappings and unrelated settings:
-
-| Physical input | Shipwright action |
+| Hint journal | An area in Checks |
 | --- | --- |
-| Left stick | Analog movement |
-| Right stick | Camera and aiming |
-| L1 + left stick | Four C-buttons |
-| L2 | Z |
-| R1 | R |
-| View / Back | L |
-| A / B | N64 A / B |
-| Start | Start |
-| D-pad | N64 D-pad |
+| ![Hint journal](docs/thor/screenshots/journal.png) | ![Checks in an area](docs/thor/screenshots/checks-area.png) |
 
-With Shipwright closed, run:
+At the top there's the run timer and the time of day.
 
-```powershell
-.\scripts\android\Set-TraditionalControllerLayout.ps1 -Path 'C:\path\to\shipofharkinian.json'
-```
+**Items**: SoH's item tracker with the real icons. Once you've read the altar in the Temple of Time, the stones and medallions show which dungeon they're in.
 
-The updater validates the rewritten JSON and replaces the original atomically without creating a backup file.
+**Hints**: the Hyrule map from the pause menu. Every location you have a hint for gets a marker: Way of the Hero, barren, items still to find, gossip stones you haven't read yet. Tap a location to see what you know about it. Only hints you've actually read show up, so no spoilers. The usual hint journal is still there behind the Journal button.
 
-Android release identity is defined once in `Android/version.properties`. The APK version name, GitHub tag, and APK filename use the same numeric four-component form, such as `9.3.0.1`; descriptive **Dual Screen** wording belongs only in the release title. Both the APK verifier and build reject mismatched version metadata so every published revision remains a real Android update.
+**Checks**: the checks of your seed, sorted by region (the 6 medallions) and by area. It uses the rando logic and updates every time you get an item:
+- blue: you can get it now
+- purple with an hourglass: you can get it at the other age
+- grey with a lock: not yet
+- gold: done
 
-The preserved feature contract from the official, Waterdish Android, and Chilhaps dual-screen sources is recorded in [Android feature parity](docs/android/FEATURE_PARITY.md).
+Tap a check to see its full name or skip it. A blinking blue dot shows what just opened up. It can follow Link from area to area.
 
-## Upstream project information
+Touching the bottom screen doesn't take the controls away from the game (on the Thor, also set Autolock to the top screen in the AYN settings).
 
-The remainder of this README comes from the official Shipwright project and describes its game requirements and general usage.
+## Other changes
 
-![Ship of Harkinian](docs/shiptitle.darkmode.png#gh-dark-mode-only)
-![Ship of Harkinian](docs/shiptitle.lightmode.png#gh-light-mode-only)
+- All check, area and gossip stone names in French too (English and German keep the original names)
+- Bigger SoH menu that works with your finger: scroll by dragging, keyboard for search, Menu Scale slider in Settings > General
+- Gyro aiming uses the Thor's own sensor (the built-in controller doesn't expose one), with more settings in Settings > Controls
+- Quit really closes the game instead of leaving it in the background
+- Fixed unreadable letters on the title screen and invisible chests with Containers Match Contents (64-bit Android bugs)
 
-* [Website](https://www.shipofharkinian.com)
-* [Discord](https://discord.com/invite/harbourmasters)
+## Install
 
-If you're having any trouble after reading through this `README`, feel free to ask for help in the Support text channels. Please keep in mind that we do not condone piracy.
+You need your own Ocarina of Time ROM. Check that it's supported on [ship.equipment](https://ship.equipment/).
 
-# Quick Start
+1. If you already have a SoH build with the package `com.dishii.soh` (Darkaxt's port for example), uninstall it first. This one is signed with a different key so Android won't install over it. Your `SOH` folder stays where it is, but back it up anyway.
+2. Download the APK from the [releases](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases/latest) and install it.
+3. Start it, allow file access, pick your ROM. It builds `oot.o2r` the first time.
+4. On the Thor, set Autolock to the top screen in the AYN settings.
+5. Make a seed in the Randomizer menu and start a new file.
 
-The Ship does not include any copyrighted assets.  You are required to provide a supported copy of the game.
+If you use the [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded-SoH) HD pack (in `SOH/mods`), the bottom screen uses its HD font.
 
-### 1. Verify your ROM dump
-You can verify you have dumped a supported copy of the game by using the compatibility checker at https://ship.equipment/. If you'd prefer to manually validate your ROM dump, you can cross-reference its `sha1` hash with the hashes [here](docs/supportedHashes.json).
+To update, just install the new APK over the old one. Saves and settings are kept.
 
-### 2. Download The Ship of Harkinian from [Releases](https://github.com/HarbourMasters/Shipwright/releases)
+Settings are in Enhancements > UI: what the bottom screen shows (trackers or the normal HUD), its size, game font on/off, reachable checks, follow current area, maps and compasses.
 
-### 3. Launch the Game!
-#### Windows
-* Extract the zip
-* Launch `soh.exe`
+## Notes
 
-#### Linux
-* Execute `soh.appimage`.  You may have to `chmod +x` the appimage via terminal.
-* When prompted, select your supported copy of the game.
-* Saves, settings and `oot.o2r` are stored in `~/.local/share/soh/`. If the folder you launch from already has `shipofharkinian.json`, `oot.o2r` or `oot-mq.o2r`, that folder is used instead. Set `SHIP_HOME` to choose another folder.
+- Android arm64 only. I only tested it on my Thor. Other dual screen handhelds might work if Android sees the second screen as a display.
+- Everything else is regular SoH 9.3.1 (rando, enhancements, mods).
+- This is not official, please don't bother the Harbour Masters or Darkaxt with issues from this build. Open an [issue](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/issues) here.
+- I made this with a lot of help from Claude (AI) for the code. I tested everything on my Thor during my own seeds.
+- Building: branch `thor-trackers`, the APK is built by GitHub Actions (`.github/workflows/android.yml`). See the [base port's README](docs/android/BASE-PORT-README.md) and [docs/BUILDING.md](docs/BUILDING.md).
 
-#### macOS
-* Run `soh.app`. When prompted, select your supported copy of the game.
-* You should see a notification saying `Processing OTR`, then, once the process is complete, you should get a notification saying `OTR Successfully Generated`, then the game should start.
+## Credits
 
-### 4. Play!
+None of this would exist without:
+- [Harbour Masters](https://github.com/HarbourMasters/Shipwright) for Ship of Harkinian, its rando and trackers, [libultraship](https://github.com/Kenix3/libultraship) and [Torch](https://github.com/HarbourMasters/Torch) (full list in [docs/CREDITS.md](docs/CREDITS.md))
+- the [OoT decomp](https://github.com/zeldaret/oot) team
+- [Darkaxt](https://github.com/Darkaxt/Shipwright-Android-Dual-Screen-Bleeding-Edge) for the dual screen port this is forked from
+- [chilhaps](https://github.com/chilhaps/Shipwright-Android-Dual-Screen) for the first dual screen version
+- [Waterdish](https://github.com/Waterdish/Shipwright-Android) for the original Android port
+- [please-be-nice](https://github.com/please-be-nice/Shipwright-android) for the newer Android work
+- [alexbcz](https://github.com/alexbcz/2ship2harkinian-PAL) and [linkzenic](https://github.com/linkzenic/2ship2harkinian-Android) for the touch menu of 2 Ship 2 Harkinian on Android, which I brought over here
+- [OoT Randomizer](https://github.com/OoTRandomizer/OoT-Randomizer)
+- [Dusk](https://github.com/TwilitRealm/dusk) by TwilitRealm, I copied their gyro settings
+- [JoyShockMapper](https://github.com/JibbSmart/JoyShockMapper) by Jibb Smart for the "player space" gyro
+- [GhostlyDark and the OoT Reloaded team](https://github.com/GhostlyDark/OoT-Reloaded-SoH) for the HD pack (not included)
 
-Congratulations, you are now sailing with the Ship of Harkinian! Have fun!
+Zelda is Nintendo's. No game data in here.
 
-# Configuration
+## Français
 
-### Default keyboard configuration
-| N64 | A | B | Z | Start | Analog stick | C buttons | D-Pad |
-| - | - | - | - | - | - | - | - |
-| Keyboard | X | C | Z | Space | WASD | Arrow keys | TFGH |
+Une version de Ship of Harkinian pour l'AYN Thor, avec un tracker de rando sur l'écran du bas : objets, carte des indices (sans spoil, seulement ce que vous avez lu) et liste des checks faisables maintenant selon la logique du rando. Tout est dans la police du jeu, et tous les noms de checks sont traduits en français.
 
-### Other shortcuts
-| Keys | Action |
-| - | - |
-| ESC | Toggle menu |
-| F2 | Toggle capture mouse input |
-| F5 | Save state |
-| F6 | Change state |
-| F7 | Load state |
-| F9 | Toggle Text-to-Speech |
-| F11 | Fullscreen |
-| Tab | Toggle Alternate assets |
-| Ctrl+R | Reset |
-
-# Project Overview
-Ship of Harkinian (SOH) is built atop a custom library dubbed libultraship (LUS). Back in the N64 days, there was an SDK distributed to developers named libultra; LUS is designed to mimic the functionality of libultra on modern hardware. In addition, we are dependent on the source code provided by the OOT decompilation project.
-
-In order for the game to function, you will require a **legally acquired** ROM for Ocarina of Time. Click [here](https://ship.equipment/) to check the compatibility of your specific rom. Any copyrighted assets are extracted from the ROM and reformatted as a .o2r archive file which the code uses.
-
-### Graphics Backends
-Currently, there are three rendering APIs supported: DirectX11 (Windows), OpenGL (all platforms), and Metal (MacOS). You can change which API to use in the `Settings` menu of the menubar, which requires a restart.  If you're having an issue with crashing, you can change the API in the `shipofharkinian.json` file by finding the line `gfxbackend:""` and changing the value to `sdl` for OpenGL. DirectX 11 is the default on Windows.
-
-# Custom Assets
-
-Custom assets are packed in `.otr` archive files. To use custom assets, place them in the `mods` folder.
-
-If you're interested in creating and/or packing your own custom asset `.otr` files, check out the following tools:
-* [**retro - OTR generator**](https://github.com/HarbourMasters64/retro)
-* [**fast64 - Blender plugin**](https://github.com/HarbourMasters/fast64)
-
-# Development
-### Building
-
-If you want to manually compile SoH, please consult the [building instructions](docs/BUILDING.md).
-
-### Playtesting
-If you want to playtest a continuous integration build, you can find them at the links below. Keep in mind that these are for playtesting only, and you will likely encounter bugs and possibly crashes. 
-
-* [Windows](https://nightly.link/HarbourMasters/Shipwright/workflows/generate-builds/develop/soh-windows.zip)
-* [macOS](https://nightly.link/HarbourMasters/Shipwright/workflows/generate-builds/develop/soh-mac.zip)
-* [Linux X86_64](https://nightly.link/HarbourMasters/Shipwright/workflows/generate-builds/develop/soh-linux-x86_64.zip)
-* [Linux ARM](https://nightly.link/HarbourMasters/Shipwright/workflows/generate-builds/develop/soh-linux-aarch64.zip)
-
-### Further Reading
-More detailed documentation can be found in the 'docs' directory, including the aforementioned [building instructions](docs/BUILDING.md).
-
-* [Credits](docs/CREDITS.md)
-* [Custom Music](docs/CUSTOM_MUSIC.md)
-* [Formatting](docs/FORMATTING.md)
-* [Controller Mapping](docs/GAME_CONTROLLER_DB.md)
-* [Modding](docs/MODDING.md)
-* [Versioning](docs/VERSIONING.md)
-
-<a href="https://github.com/Kenix3/libultraship/">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./docs/poweredbylus.darkmode.png">
-    <img alt="Powered by libultraship" src="./docs/poweredbylus.lightmode.png">
-  </picture>
-</a>
+Pour l'installer : désinstallez d'abord toute autre version qui utilise `com.dishii.soh` (le dossier `SOH` reste, mais faites une copie), installez l'APK de la [release](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases/latest), puis choisissez votre ROM au premier lancement. Sur la Thor, mettez Autolock sur l'écran du haut. Les réglages sont dans Enhancements > UI.

@@ -1,0 +1,65 @@
+name: Thor release (draft)
+
+# Publishes the signed APK of a finished Android build as a DRAFT GitHub
+# release, only for a thor-trackers commit whose message contains [release].
+# Tag, title and file name come from docs/thor/release.properties, the notes
+# from docs/thor/RELEASE_NOTES.md. The draft is published by hand afterwards.
+on:
+  workflow_run:
+    workflows: ["Android tests and release candidate"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  draft-release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'thor-trackers' &&
+      contains(github.event.workflow_run.head_commit.message, '[release]')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Check out the released commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Download the signed APK of that build
+        uses: actions/download-artifact@v4
+        with:
+          name: thor-signed-${{ github.event.workflow_run.head_sha }}
+          path: signed
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Create or update the draft release
+        shell: bash
+        run: |
+          set -euo pipefail
+          prop() { sed -n "s/^$1=//p" docs/thor/release.properties | tr -d '\r'; }
+          tag=$(prop tag); title=$(prop title); asset=$(prop asset)
+          apk=$(ls signed/*.apk | head -n 1)
+          mkdir -p out
+          cp "$apk" "out/$asset"
+          (cd out && sha256sum "$asset" > "$asset.sha256")
+          cat out/*.sha256
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.tag_name == \"$tag\") | .id" | head -n 1)
+          if [ -n "$id" ]; then
+            draft=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" --jq .draft)
+            if [ "$draft" != "true" ]; then
+              echo "Release $tag is already published: not touching it. Bump the tag in docs/thor/release.properties."
+              exit 1
+            fi
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$id" -f target_commitish="$SHA" -f name="$title" \
+              -F body=@docs/thor/RELEASE_NOTES.md > /dev/null
+            gh release upload "$tag" "out/$asset" "out/$asset.sha256" --clobber
+          else
+            gh release create "$tag" "out/$asset" "out/$asset.sha256" --draft --target "$SHA" \
+              --title "$title" --notes-file docs/thor/RELEASE_NOTES.md
+          fi
