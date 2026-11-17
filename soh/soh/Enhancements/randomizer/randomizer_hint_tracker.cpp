@@ -53,6 +53,23 @@ static bool doAreaScroll = false;
 // True while the hint list is drawn on the dual-screen bottom display.
 static bool sEmbeddedDraw = false;
 
+#if defined(__ANDROID__)
+// Bottom screen (DualScreenHUD/DualScreenTracker.cpp): text in the game's font.
+void DualScreenTracker_WrappedText(const char* text);
+void DualScreenTracker_LabelText(ImVec2 min, ImVec2 max, const char* text, ImU32 color, float offsetX, bool centred);
+#endif
+
+// Paragraph of the list: game font on the bottom screen, ImGui text elsewhere.
+static void ListText(const char* text) {
+#if defined(__ANDROID__)
+    if (sEmbeddedDraw) {
+        DualScreenTracker_WrappedText(text);
+        return;
+    }
+#endif
+    ImGui::TextWrapped("%s", text);
+}
+
 // Formatted hint text is cached per hint; invalidated on file load/init and
 // when the game language changes. Only touched from the draw thread.
 static std::unordered_map<RandomizerHint, std::string> hintTextCache;
@@ -477,10 +494,10 @@ static void DrawHintEntry(const HintEntry& entry) {
     if (nameColor != nullptr) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(nameColor->r / 255.0f, nameColor->g / 255.0f, nameColor->b / 255.0f,
                                                     nameColor->a / 255.0f));
-        ImGui::TextWrapped("%s", name.c_str());
+        ListText(name.c_str());
         ImGui::PopStyleColor();
     } else {
-        ImGui::TextWrapped("%s", name.c_str());
+        ListText(name.c_str());
     }
     if (entry.compact) {
         return;
@@ -490,18 +507,18 @@ static void DrawHintEntry(const HintEntry& entry) {
         const Color_RGBA8& textColor = entry.found ? Color_Found : Color_ReadText;
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(textColor.r / 255.0f, textColor.g / 255.0f, textColor.b / 255.0f,
                                                     textColor.a / 255.0f));
-        ImGui::TextWrapped("%s", entry.customText.c_str());
+        ListText(entry.customText.c_str());
         ImGui::PopStyleColor();
     } else if (IsHintRead(entry.hintKey)) {
         const Color_RGBA8& textColor = entry.found ? Color_Found : Color_ReadText;
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(textColor.r / 255.0f, textColor.g / 255.0f, textColor.b / 255.0f,
                                                     textColor.a / 255.0f));
-        ImGui::TextWrapped("%s", GetJoinedHintText(entry.hintKey).c_str());
+        ListText(GetJoinedHintText(entry.hintKey).c_str());
         ImGui::PopStyleColor();
     } else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(Color_Unread.r / 255.0f, Color_Unread.g / 255.0f,
                                                     Color_Unread.b / 255.0f, Color_Unread.a / 255.0f));
-        ImGui::TextUnformatted("???");
+        ListText("???");
         ImGui::PopStyleColor();
     }
     ImGui::Unindent();
@@ -522,7 +539,17 @@ static bool DrawGroupHeader(const std::string& name, size_t read, size_t total, 
     if (sEmbeddedDraw) {
         // Full-width framed bar: the whole row is the touch target.
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.82f, 0.45f, 1.0f));
+#if defined(__ANDROID__)
+        // Label drawn over the bar in the game's font (the node keeps its id).
+        const std::string visible = label.substr(0, label.find("###"));
+        bool open = ImGui::TreeNodeEx(("###HintTracker" + name).c_str(),
+                                      ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth);
+        DualScreenTracker_LabelText(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), visible.c_str(),
+                                    ImGui::GetColorU32(ImGuiCol_Text),
+                                    ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.x * 3.0f, false);
+#else
         bool open = ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth);
+#endif
         ImGui::PopStyleColor();
         return open;
     }
@@ -547,7 +574,16 @@ static HintTrackerViewMode DrawViewTabs() {
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.40f, 0.34f, 0.14f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_Text, selected ? ImVec4(1.0f, 0.92f, 0.45f, 1.0f)
                                                           : ImVec4(0.75f, 0.75f, 0.75f, 1.0f));
-            if (ImGui::Button((label.GetForCurrentLanguage(MF_CLEAN) + id).c_str(), size) && !selected) {
+#if defined(__ANDROID__)
+            // Label drawn over the button in the game's font.
+            const bool pressed = ImGui::Button(id, size);
+            DualScreenTracker_LabelText(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+                                        label.GetForCurrentLanguage(MF_CLEAN).c_str(),
+                                        ImGui::GetColorU32(ImGuiCol_Text), 0.0f, true);
+#else
+            const bool pressed = ImGui::Button((label.GetForCurrentLanguage(MF_CLEAN) + id).c_str(), size);
+#endif
+            if (pressed && !selected) {
                 viewMode = mode;
                 CVarSetInteger(CVAR_TRACKER_HINT("ViewMode"), mode);
                 Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
@@ -856,15 +892,21 @@ static void DrawHintList() {
     }
 
     if (showTotals) {
-        ImGui::Text("%zu / %zu %s", readCount, totalHints, hintsReadLabel.GetForCurrentLanguage(MF_CLEAN).c_str());
+        const std::string totals = std::to_string(readCount) + " / " + std::to_string(totalHints) + " " +
+                                   hintsReadLabel.GetForCurrentLanguage(MF_CLEAN);
+        if (sEmbeddedDraw) {
+            ListText(totals.c_str());
+        } else {
+            ImGui::TextUnformatted(totals.c_str());
+        }
     }
 
     if (totalHints == 0) {
-        ImGui::TextWrapped("%s", noHintsMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
+        ListText(noHintsMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
         return;
     }
     if (journalView && readCount == 0 && skullEntries == 0) {
-        ImGui::TextWrapped("%s", journalEmptyMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
+        ListText(journalEmptyMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
         return;
     }
 
@@ -954,15 +996,17 @@ bool IsHintReadByPlayer(RandomizerHint hintKey) {
 }
 
 void DrawEmbedded() {
+    sEmbeddedDraw = true;
     if (!GameInteractor::IsSaveLoaded()) {
-        ImGui::TextUnformatted(waitingMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
+        ListText(waitingMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
+        sEmbeddedDraw = false;
         return;
     }
     if (!IS_RANDO) {
-        ImGui::TextWrapped("%s", randoOnlyMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
+        ListText(randoOnlyMessage.GetForCurrentLanguage(MF_CLEAN).c_str());
+        sEmbeddedDraw = false;
         return;
     }
-    sEmbeddedDraw = true;
     DrawHintList();
     sEmbeddedDraw = false;
 }

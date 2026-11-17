@@ -1041,6 +1041,31 @@ void DualScreenTracker_PrepareResources() {
     sTexturesLoaded = true;
 }
 
+// Hint journal (randomizer_hint_tracker.cpp, bottom screen): paragraphs and
+// labels of its ImGui widgets in the game's font.
+void DualScreenTracker_WrappedText(const char* text) {
+    WrappedText(text);
+}
+
+void DualScreenTracker_LabelText(ImVec2 min, ImVec2 max, const char* text, ImU32 color, float offsetX, bool centred) {
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImFont* font = ImGui::GetFont();
+    const float size = ImGui::GetFontSize();
+    const bool gameFont = GameFont::Enabled();
+    const float scale = GameFont::RoleScale(size);
+    const float width = gameFont ? GameFont::Width(font, size, text, scale)
+                                 : font->CalcTextSizeA(size, FLT_MAX, 0.0f, text).x;
+    const float x = centred ? (min.x + max.x - width) * 0.5f : min.x + offsetX;
+    // Line top such that the cap line sits in the middle of the frame.
+    const float ascent = font->Ascent * size / font->FontSize;
+    const float y = (min.y + max.y) * 0.5f - ascent + GameFont::kCapHeight * size * 0.5f;
+    if (gameFont && GameFont::Draw(dl, font, size, ImVec2(x + 1.5f, y + 1.5f), IM_COL32(0, 0, 0, 200), text, scale)) {
+        GameFont::Draw(dl, font, size, ImVec2(x, y), color, text, scale);
+        return;
+    }
+    dl->AddText(font, size, ImVec2(x, y), color, text);
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_dishii_soh_MainActivity_nativeSecondaryTouch(JNIEnv*, jobject,
                                                                                        jint action, jfloat x,
                                                                                        jfloat y) {
