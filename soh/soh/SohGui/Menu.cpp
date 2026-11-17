@@ -1103,6 +1103,12 @@ void Menu::DrawElement() {
                 if (!menu->IsMenuPopped()) {
                     menu->ToggleVisibility();
                 }
+#ifdef __ANDROID__
+                // The menu state is saved on the next frame, which never comes:
+                // save it closed now so the next launch does not open on it.
+                CVarClear(CVAR_WINDOW("Menu"));
+                CVarSave();
+#endif
                 Ship::Context::GetRawInstance()->GetWindow()->Close();
             },
             nullptr);

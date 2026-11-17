@@ -164,6 +164,12 @@ std::vector<std::shared_ptr<Ship::GuiWindow>> GetAllGuiWindows() {
 
 void SetupMenu() {
     auto gui = Ship::Context::GetRawInstance()->GetWindow()->GetGui();
+#ifdef __ANDROID__
+    // Thor: always start in the game, never on the menu. Quitting from the
+    // menu could leave it saved as open, and a session started on the menu
+    // also lost the gyroscope until the next launch.
+    CVarClear(CVAR_WINDOW("Menu"));
+#endif
     mSohMenu = std::make_shared<SohMenu>(CVAR_WINDOW("Menu"), "Port Menu");
     gui->SetMenu(mSohMenu);
 
