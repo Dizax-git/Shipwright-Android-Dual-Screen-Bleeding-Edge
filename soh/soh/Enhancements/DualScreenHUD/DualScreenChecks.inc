@@ -445,30 +445,42 @@ void DrawHeader() {
         dl->AddRect(min, max, WithAlpha(region.color, complete ? 90 : 200), 8.0f, 0, 2.0f);
         const float icon = 30.0f;
         DrawMedallion(dl, region, ImVec2(min.x + 6.0f, min.y + (buttonH - icon) * 0.5f), icon, complete);
-        char badge[16];
+        if (stats.fresh > 0) {
+            // Something just became reachable here: Navi at the medallion's corner.
+            DrawNavi(dl, ImVec2(min.x + 6.0f + icon, min.y + (buttonH - icon) * 0.5f),
+                     static_cast<int>(130 + 125 * Pulse(6.0f)));
+        }
+        // Badge: an optional icon (check, hourglass) at 18 px, the number bigger.
+        const float iconSize = 18.0f;
+        const float numberSize = 24.0f;
+        const char* badgeIcon = nullptr;
+        char number[16] = "";
         ImU32 badgeColor = kColTodo;
         if (complete) {
-            std::snprintf(badge, sizeof(badge), "%s", ICON_FA_CHECK);
+            badgeIcon = ICON_FA_CHECK;
             badgeColor = kColDone;
+        } else if (stats.todo == 0 && stats.otherAge > 0) {
+            // Same counter as "to do" above (both ages); in lavender when only
+            // the other age has something to do here.
+            badgeIcon = ICON_FA_HOURGLASS_HALF;
+            std::snprintf(number, sizeof(number), "%d", stats.otherAge);
+            badgeColor = kColOtherAge;
         } else {
-            // Same counter as "to do" above (both ages), with its arrow; in
-            // lavender when only the other age has something to do here.
-            if (stats.todo == 0 && stats.otherAge > 0) {
-                std::snprintf(badge, sizeof(badge), "%s %d", ICON_FA_HOURGLASS_HALF, stats.otherAge);
-                badgeColor = kColOtherAge;
-            } else {
-                std::snprintf(badge, sizeof(badge), "%s %d", ICON_FA_ARROW_CIRCLE_RIGHT, stats.todo + stats.otherAge);
-                if (stats.todo == 0) {
-                    badgeColor = kColLocked;
-                }
+            std::snprintf(number, sizeof(number), "%d", stats.todo + stats.otherAge);
+            if (stats.todo == 0) {
+                badgeColor = kColLocked;
             }
         }
-        const float badgeW = TextWidth(big, 18.0f, badge);
-        ShadowText(dl, big, 18.0f, ImVec2(max.x - badgeW - 7.0f, min.y + (buttonH - 18.0f) * 0.5f - 1.0f), badgeColor,
-                   badge);
-        if (stats.fresh > 0) {
-            dl->AddCircleFilled(ImVec2(max.x - 6.0f, min.y + 6.0f), 5.0f,
-                                WithAlpha(kColTodo, static_cast<int>(130 + 125 * Pulse(6.0f))));
+        float x = max.x - 7.0f;
+        if (number[0] != '\0') {
+            x -= TextWidth(big, numberSize, number);
+            ShadowText(dl, big, numberSize, ImVec2(x, min.y + (buttonH - numberSize) * 0.5f - 1.0f), badgeColor,
+                       number);
+        }
+        if (badgeIcon != nullptr) {
+            x -= TextWidth(big, iconSize, badgeIcon) + (number[0] != '\0' ? 4.0f : 0.0f);
+            ShadowText(dl, big, iconSize, ImVec2(x, min.y + (buttonH - iconSize) * 0.5f - 1.0f), badgeColor,
+                       badgeIcon);
         }
         if (static_cast<int>(r) == currentRegion) {
             // Where Link is: a small marker under the medallion.
@@ -786,12 +798,9 @@ void DrawCheckRow(const Row& row, float width) {
             // Why it is lavender: the logic needs the other age.
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(kColOtherAge));
             ImGui::TextWrapped("%s %s", ICON_FA_HOURGLASS_HALF,
-                               IsAdultNow() ? Label("Needs you to be a child (Temple of Time).",
-                                                    "Nur als Kind (Zitadelle der Zeit).",
-                                                    "Faisable en enfant (passer par le Temple du Temps).")
-                                            : Label("Needs you to be an adult (Temple of Time).",
-                                                    "Nur als Erwachsener (Zitadelle der Zeit).",
-                                                    "Faisable en adulte (passer par le Temple du Temps)."));
+                               IsAdultNow() ? Label("Needs you to be a child.", "Nur als Kind.", "Faisable en enfant.")
+                                            : Label("Needs you to be an adult.", "Nur als Erwachsener.",
+                                                    "Faisable en adulte."));
             ImGui::PopStyleColor();
         }
         ImGui::PopFont();

@@ -40,6 +40,7 @@ extern "C" {
 #include "assets/textures/message_static/message_static.h"
 #include "assets/textures/parameter_static/parameter_static.h"
 #include "assets/textures/icon_item_field_static/icon_item_field_static.h"
+#include "assets/soh_assets.h"
 #include "variables.h"
 #include "macros.h"
 }
@@ -245,6 +246,23 @@ ImTextureID Tex(const char* name) {
     return gui == nullptr ? nullptr : gui->GetTextureByName(name);
 }
 
+// Navi (SoH's 16x16 timer icon) as the "something new" marker: two screen
+// pixels per texel, snapped to the pixel grid, so the pixel art stays sharp.
+// Falls back to the old pulsing dot if the texture is missing.
+void DrawNavi(ImDrawList* drawList, ImVec2 center, int alpha) {
+    const float scale = GetUiScale();
+    const float size = 32.0f / scale;
+    ImTextureID navi = Tex("DST_NAVI");
+    if (navi == nullptr) {
+        drawList->AddCircleFilled(center, 6.0f, IM_COL32(120, 230, 255, alpha));
+        return;
+    }
+    const ImVec2 min(std::round((center.x - size * 0.5f) * scale) / scale,
+                     std::round((center.y - size * 0.5f) * scale) / scale);
+    drawList->AddImage(navi, min, ImVec2(min.x + size, min.y + size), ImVec2(0, 0), ImVec2(1, 1),
+                       IM_COL32(255, 255, 255, alpha));
+}
+
 // Game-style text box (the dialogue box texture, mirrored for its right half).
 void DrawTextbox(ImDrawList* drawList, ImVec2 min, ImVec2 max, ImU32 color) {
     ImTextureID box = Tex("DST_MSG_BG");
@@ -282,7 +300,8 @@ void DrawPauseCursor(ImDrawList* drawList, ImVec2 min, ImVec2 max) {
     }
 }
 
-void DrawTabButton(const char* label, TrackerTab tab, float width, float height, bool notify = false) {
+void DrawTabButton(const char* label, TrackerTab tab, float width, float height, bool notify = false,
+                   bool notifyWithNavi = false) {
     const bool selected = CVarGetInteger(CVAR_ENHANCEMENT("DualScreenTrackerTab"), TAB_ITEMS) == tab;
     const ImVec2 min = ImGui::GetCursorScreenPos();
     const ImVec2 max(min.x + width, min.y + height);
@@ -305,10 +324,15 @@ void DrawTabButton(const char* label, TrackerTab tab, float width, float height,
     if (selected) {
         DrawPauseCursor(drawList, min, max);
     } else if (notify) {
-        // Something new to look at in this tab: a small pulsing Navi-blue dot.
+        // Something new to look at in this tab: a pulsing Navi (Hints) or a
+        // small pulsing Navi-blue dot.
         const float pulse = 0.5f + 0.5f * std::sin(static_cast<float>(ImGui::GetTime()) * 6.0f);
-        drawList->AddCircleFilled(ImVec2(max.x - 12.0f, min.y + 12.0f), 6.0f,
-                                  IM_COL32(120, 230, 255, static_cast<int>(140 + 115 * pulse)));
+        if (notifyWithNavi) {
+            DrawNavi(drawList, ImVec2(max.x - 14.0f, min.y + 14.0f), static_cast<int>(140 + 115 * pulse));
+        } else {
+            drawList->AddCircleFilled(ImVec2(max.x - 12.0f, min.y + 12.0f), 6.0f,
+                                      IM_COL32(120, 230, 255, static_cast<int>(140 + 115 * pulse)));
+        }
     }
 }
 
@@ -383,7 +407,7 @@ void DrawTrackerUi() {
     DrawTabButton(Label("Items", "Gegenstaende", "Objets"), TAB_ITEMS, tabWidth, tabHeight);
     ImGui::SameLine();
     DrawTabButton(Label("Hints", "Hinweise", "Indices"), TAB_HINTS, tabWidth, tabHeight,
-                  hintsReady && HintMap::HasNews());
+                  hintsReady && HintMap::HasNews(), true);
     ImGui::SameLine();
     DrawTabButton(Label("Checks", "Checks", "Checks"), TAB_CHECKS, tabWidth, tabHeight,
                   checksReady && Checks::HasFresh());
@@ -582,6 +606,7 @@ void DualScreenTracker_PrepareResources() {
     gui->LoadGuiTexture("DST_CURSOR_BL", dgPauseMenuCursorBottomLeftTex, "", white);
     gui->LoadGuiTexture("DST_CURSOR_BR", dgPauseMenuCursorBottomRightTex, "", white);
     gui->LoadGuiTexture("DST_CLOCK", dgClockIconTex, "", white);
+    gui->LoadGuiTexture("DST_NAVI", gNaviIconTex, "", white);
     LoadWorldMapTextures(gui.get());
     sTexturesLoaded = true;
 }
