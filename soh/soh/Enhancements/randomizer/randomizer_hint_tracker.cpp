@@ -37,6 +37,12 @@ using namespace UIWidgets;
 char z2ASCII(int code);
 std::string decodeNTSCPlayerNameChar(int code);
 
+#if defined(__ANDROID__)
+// Bottom screen (DualScreenHUD/DualScreenTracker.cpp): text in the game's font.
+void DualScreenTracker_WrappedText(const char* text);
+void DualScreenTracker_LabelText(ImVec2 min, ImVec2 max, const char* text, ImU32 color, float offsetX, bool centred);
+#endif
+
 namespace HintTracker {
 
 static Color_RGBA8 Color_Background = { 0, 0, 0, 255 };
@@ -53,17 +59,11 @@ static bool doAreaScroll = false;
 // True while the hint list is drawn on the dual-screen bottom display.
 static bool sEmbeddedDraw = false;
 
-#if defined(__ANDROID__)
-// Bottom screen (DualScreenHUD/DualScreenTracker.cpp): text in the game's font.
-void DualScreenTracker_WrappedText(const char* text);
-void DualScreenTracker_LabelText(ImVec2 min, ImVec2 max, const char* text, ImU32 color, float offsetX, bool centred);
-#endif
-
 // Paragraph of the list: game font on the bottom screen, ImGui text elsewhere.
 static void ListText(const char* text) {
 #if defined(__ANDROID__)
     if (sEmbeddedDraw) {
-        DualScreenTracker_WrappedText(text);
+        ::DualScreenTracker_WrappedText(text);
         return;
     }
 #endif
@@ -544,7 +544,7 @@ static bool DrawGroupHeader(const std::string& name, size_t read, size_t total, 
         const std::string visible = label.substr(0, label.find("###"));
         bool open = ImGui::TreeNodeEx(("###HintTracker" + name).c_str(),
                                       ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth);
-        DualScreenTracker_LabelText(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), visible.c_str(),
+        ::DualScreenTracker_LabelText(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), visible.c_str(),
                                     ImGui::GetColorU32(ImGuiCol_Text),
                                     ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.x * 3.0f, false);
 #else
@@ -577,7 +577,7 @@ static HintTrackerViewMode DrawViewTabs() {
 #if defined(__ANDROID__)
             // Label drawn over the button in the game's font.
             const bool pressed = ImGui::Button(id, size);
-            DualScreenTracker_LabelText(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+            ::DualScreenTracker_LabelText(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
                                         label.GetForCurrentLanguage(MF_CLEAN).c_str(),
                                         ImGui::GetColorU32(ImGuiCol_Text), 0.0f, true);
 #else
