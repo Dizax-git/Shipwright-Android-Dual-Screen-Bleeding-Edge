@@ -457,11 +457,6 @@ void DrawHeader() {
         dl->AddRect(min, max, WithAlpha(region.color, complete ? 90 : 200), 8.0f, 0, 2.0f);
         const float icon = 30.0f;
         DrawMedallion(dl, region, ImVec2(min.x + 6.0f, min.y + (buttonH - icon) * 0.5f), icon, complete);
-        if (stats.fresh > 0) {
-            // Something just became reachable here: Navi at the medallion's corner.
-            DrawNavi(dl, ImVec2(min.x + 6.0f + icon, min.y + (buttonH - icon) * 0.5f),
-                     static_cast<int>(130 + 125 * Pulse(6.0f)));
-        }
         // Badge: an optional icon (check, hourglass) at 18 px, the number bigger.
         const float iconSize = 18.0f;
         const float numberSize = 24.0f;
@@ -493,6 +488,10 @@ void DrawHeader() {
             x -= TextWidth(big, iconSize, badgeIcon) + (number[0] != '\0' ? 4.0f : 0.0f);
             ShadowText(dl, big, iconSize, ImVec2(x, min.y + (buttonH - iconSize) * 0.5f - 1.0f), badgeColor,
                        badgeIcon);
+        }
+        if (stats.fresh > 0) {
+            dl->AddCircleFilled(ImVec2(max.x - 6.0f, min.y + 6.0f), 5.0f,
+                                WithAlpha(kColTodo, static_cast<int>(130 + 125 * Pulse(6.0f))));
         }
         if (static_cast<int>(r) == currentRegion) {
             // Where Link is: a small marker under the medallion.
