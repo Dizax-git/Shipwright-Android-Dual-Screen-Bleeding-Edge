@@ -149,7 +149,7 @@ public class MainActivity extends SDLActivity{
     }
 
     private void deleteOutdatedAssets() {
-        File targetRootFolder = new File(Environment.getExternalStorageDirectory(), "SOH");
+        File targetRootFolder = new File(Environment.getExternalStorageDirectory(), "SOH-Test");
 
         File sohFile = new File(targetRootFolder, "soh.otr");
         File ootFile = new File(targetRootFolder, "oot.otr");
@@ -246,7 +246,7 @@ public class MainActivity extends SDLActivity{
     }
 
     public void checkAndSetupFiles() {
-        File targetRootFolder = new File(Environment.getExternalStorageDirectory(), "SOH");
+        File targetRootFolder = new File(Environment.getExternalStorageDirectory(), "SOH-Test");
         File assetsFolder = new File(targetRootFolder, "assets");
         // Support both .otr (9.0.x) and .o2r (9.2.x) archive formats
         File sohOtrFile = new File(targetRootFolder, "soh.o2r");
@@ -511,7 +511,7 @@ public class MainActivity extends SDLActivity{
                 }
 
                 candidate = result.getCandidate();
-                File destinationDirectory = new File(Environment.getExternalStorageDirectory(), "SOH");
+                File destinationDirectory = new File(Environment.getExternalStorageDirectory(), "SOH-Test");
                 ensureDirectory(destinationDirectory);
                 File destination = new File(destinationDirectory, "OOT.z64");
                 pending = new File(destinationDirectory, "OOT.z64.pending");

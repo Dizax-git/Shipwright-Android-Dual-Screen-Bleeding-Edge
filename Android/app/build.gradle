@@ -42,7 +42,7 @@ android {
     }
     defaultConfig {
         if (buildAsApplication) {
-            applicationId "com.dishii.soh"
+            applicationId "com.dishii.soh.test"
         }
         minSdkVersion 24
         targetSdkVersion 33

@@ -74,7 +74,7 @@ Describe 'Shipwright Android APK release contract' {
         $script:aapt2 = Join-Path $TestDrive 'aapt2.cmd'
         $script:zipalign = Join-Path $TestDrive 'zipalign.cmd'
         $script:apksigner = Join-Path $TestDrive 'apksigner.cmd'
-        "@echo package: name='com.dishii.soh' versionCode='902003005' versionName='9.2.3.5'`r`n@echo native-code: 'arm64-v8a'" |
+        "@echo package: name='com.dishii.soh.test' versionCode='902003005' versionName='9.2.3.5'`r`n@echo native-code: 'arm64-v8a'" |
             Set-Content -LiteralPath $aapt2 -Encoding Ascii
         '@exit /b 0' | Set-Content -LiteralPath $zipalign -Encoding Ascii
         "@echo Verifies`r`n@echo Signer #1 certificate SHA-256 digest: $expectedSigner" |

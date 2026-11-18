@@ -220,7 +220,7 @@ function Assert-SohUnsignedApk {
     $badging = Invoke-SohProcess -FilePath $aapt2 -Arguments @('dump', 'badging', $apk) -WorkingDirectory $root -Quiet
     $match = [regex]::Match($badging.Output, "(?m)^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'")
     if (-not $match.Success) { throw 'Could not parse APK package metadata.' }
-    if ($match.Groups[1].Value -ne 'com.dishii.soh') { throw "Unexpected APK package: $($match.Groups[1].Value)" }
+    if ($match.Groups[1].Value -ne 'com.dishii.soh.test') { throw "Unexpected APK package: $($match.Groups[1].Value)" }
     if ($match.Groups[2].Value -ne [string] $Version.VersionCode) { throw "Unexpected APK versionCode: $($match.Groups[2].Value)" }
     if ($match.Groups[3].Value -ne $Version.VersionName) { throw "Unexpected APK versionName: $($match.Groups[3].Value)" }
 
@@ -246,7 +246,7 @@ function Assert-SohUnsignedApk {
     if ($signature.ExitCode -eq 0) { throw 'Gradle release candidate is unexpectedly signed.' }
 
     [pscustomobject]@{
-        Package = 'com.dishii.soh'
+        Package = 'com.dishii.soh.test'
         VersionName = $Version.VersionName
         VersionCode = $Version.VersionCode
         Abis = $abis

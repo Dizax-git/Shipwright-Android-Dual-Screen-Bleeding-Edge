@@ -131,7 +131,7 @@ index 361a1f75..a8213153 100644
  std::string Context::GetAppBundlePath() {
  #if defined(__ANDROID__)
 -    const char* externaldir = SDL_AndroidGetExternalStoragePath();
-+    const char* externaldir = "/storage/emulated/0/SOH";
++    const char* externaldir = "/storage/emulated/0/SOH-Test";
      if (externaldir != NULL) {
          return externaldir;
      }
@@ -140,7 +140,7 @@ index 361a1f75..a8213153 100644
  std::string Context::GetAppDirectoryPath(const std::string& appName) {
  #if defined(__ANDROID__)
 -    const char* externaldir = SDL_AndroidGetExternalStoragePath();
-+    const char* externaldir = "/storage/emulated/0/SOH";
++    const char* externaldir = "/storage/emulated/0/SOH-Test";
      if (externaldir != NULL) {
          return externaldir;
      }

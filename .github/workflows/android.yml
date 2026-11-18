@@ -2,7 +2,7 @@ name: Android tests and release candidate
 
 on:
   push:
-    branches: [main, thor-trackers]
+    branches: [main, thor-trackers, thor-test-install]
   pull_request:
   workflow_dispatch:
 

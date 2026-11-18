@@ -128,7 +128,7 @@ if (-not $packageMatch.Success) { throw 'Could not parse package metadata from a
 $package = $packageMatch.Groups[1].Value
 $versionCode = $packageMatch.Groups[2].Value
 $versionName = $packageMatch.Groups[3].Value
-if ($package -ne 'com.dishii.soh') {
+if ($package -ne 'com.dishii.soh.test') {
     throw "APK package mismatch. Expected com.dishii.soh but found $package."
 }
 if ($versionName -ne $ExpectedVersion) {
