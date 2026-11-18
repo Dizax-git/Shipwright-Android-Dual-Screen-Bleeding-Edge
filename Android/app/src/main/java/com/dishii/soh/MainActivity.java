@@ -835,7 +835,9 @@ public class MainActivity extends SDLActivity{
     }
 
     private void setupToggleButton(Button button, ViewGroup uiGroup){
-        boolean isHidden = preferences.getBoolean("controlsVisible", false); // Default to 'false' (visible)
+        // Thor build: the console has its own buttons and the overlay would sit on the bottom-screen
+        // trackers, so touch controls start hidden on a new install ("controlsVisible" stores "hidden").
+        boolean isHidden = preferences.getBoolean("controlsVisible", true);
         uiGroup.setVisibility(isHidden ? View.INVISIBLE : View.VISIBLE);
         if (isHidden) {
             DisableTouchArea();
@@ -844,7 +846,7 @@ public class MainActivity extends SDLActivity{
             EnableTouchArea();
             overlayView.setOnTouchListener((view, e) -> true);
         }
-        boolean toggleVisible = preferences.getBoolean("toggleButtonVisible", true); // Default to visible
+        boolean toggleVisible = preferences.getBoolean("toggleButtonVisible", false); // Eye hidden by default (Settings > Controls > Touch Controls)
         button.setVisibility(toggleVisible ? View.VISIBLE : View.GONE);
         button.setOnClickListener(v -> {
             boolean currentlyHidden = uiGroup.getVisibility() != View.VISIBLE;
