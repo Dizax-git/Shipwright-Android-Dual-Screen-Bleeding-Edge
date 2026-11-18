@@ -264,13 +264,11 @@ public class MainActivity extends SDLActivity{
         if (!targetRootFolder.exists() || isMissingAssets || isMissingSohOtr) {
             new AlertDialog.Builder(this)
                     .setTitle("Setup Required")
-                    .setMessage("Some required files are missing. The app will create them (~1 minute). Press OK to begin.")
+                    .setMessage("Ship of Harkinian needs to set up its files. This can take a few minutes; "
+                            + "a counter shows the progress. Press OK to begin.")
                     .setCancelable(false)
                     .setPositiveButton("OK", (dialog, which) -> {
-                        Executors.newSingleThreadExecutor().execute(() -> {
-                            runOnUiThread(() -> Toast.makeText(this, "Setting up files...", Toast.LENGTH_SHORT).show());
-                            setupFilesInBackground(targetRootFolder);
-                        });
+                        Executors.newSingleThreadExecutor().execute(() -> setupFilesInBackground(targetRootFolder));
                     })
                     .show();
         } else {
@@ -298,7 +296,38 @@ public class MainActivity extends SDLActivity{
     }
 
 
+    private AlertDialog setupProgressDialog;
+
+    // A black screen for several minutes looks like a hang, so the copy shows a counter.
+    private void showSetupProgress(String message) {
+        runOnUiThread(() -> {
+            if (isFinishing()) {
+                return;
+            }
+            if (setupProgressDialog == null) {
+                setupProgressDialog = new AlertDialog.Builder(this)
+                        .setTitle("Setting up files")
+                        .setMessage(message)
+                        .setCancelable(false)
+                        .create();
+                setupProgressDialog.show();
+            } else {
+                setupProgressDialog.setMessage(message);
+            }
+        });
+    }
+
+    private void hideSetupProgress() {
+        runOnUiThread(() -> {
+            if (setupProgressDialog != null) {
+                setupProgressDialog.dismiss();
+                setupProgressDialog = null;
+            }
+        });
+    }
+
     private void setupFilesInBackground(File targetRootFolder) {
+        showSetupProgress("Preparing...");
 
         File sourceOldRoot = getExternalFilesDir(null);
         File sourceSavesDir = new File(sourceOldRoot, "Save"); // how to tell if there's anything to migrate
@@ -337,6 +366,7 @@ public class MainActivity extends SDLActivity{
             targetRootFolder.mkdirs();
             if (!targetRootFolder.exists()) {
                 Log.e("setupFiles", "Failed to create root folder");
+                hideSetupProgress();
                 runOnUiThread(() -> Toast.makeText(this, "Failed to create folder", Toast.LENGTH_LONG).show());
                 setupLatch.countDown();
                 return;
@@ -355,8 +385,12 @@ public class MainActivity extends SDLActivity{
             if (!targetAssetsDir.exists()) {
                 targetAssetsDir.mkdirs();
             }
-            AssetCopyUtil.copyAssetsToExternal(this, "assets", targetAssetsDir.getAbsolutePath());
-            runOnUiThread(() -> Toast.makeText(this, "Assets copied", Toast.LENGTH_SHORT).show());
+            long started = android.os.SystemClock.elapsedRealtime();
+            AssetCopyUtil.copyAssetsToExternal(this, "assets", targetAssetsDir.getAbsolutePath(),
+                    (done, total) -> showSetupProgress(String.format(java.util.Locale.US,
+                            "Copying game data: %,d / %,d files\n\nThis only happens on the first launch and after an update.",
+                            done, total)));
+            Log.i("setupFiles", "Assets copied in " + (android.os.SystemClock.elapsedRealtime() - started) + " ms");
         } catch (IOException e) {
             e.printStackTrace();
             showBundledAssetCopyError(targetRootFolder, e);
@@ -366,20 +400,23 @@ public class MainActivity extends SDLActivity{
         // Replace only the project-owned archive atomically; never touch oot.o2r or saves.
         try {
             File targetOtrFile = new File(targetRootFolder, "soh.o2r");
+            showSetupProgress("Copying soh.o2r...");
             AssetCopyUtil.copyBundledFile(this, "soh.o2r", targetOtrFile);
+            // Recorded only once everything is written, so an interrupted copy is redone.
             getSharedPreferences("bundled-assets", MODE_PRIVATE).edit()
                     .putInt("versionCode", BuildConfig.VERSION_CODE).apply();
-            runOnUiThread(() -> Toast.makeText(this, "soh.o2r copied", Toast.LENGTH_SHORT).show());
         } catch (IOException e) {
             showBundledAssetCopyError(targetRootFolder, e);
             return;
         }
 
+        hideSetupProgress();
         setupLatch.countDown();
     }
 
     private void showBundledAssetCopyError(File targetRootFolder, IOException error) {
         Log.e("setupFiles", "Could not refresh bundled assets", error);
+        hideSetupProgress();
         runOnUiThread(() -> new AlertDialog.Builder(this)
                 .setTitle("Asset setup failed")
                 .setMessage("The bundled assets could not be copied. Check available storage and permissions, then retry. Your ROMs and saves have not been removed.")

@@ -52,7 +52,7 @@ You need your own Ocarina of Time ROM. Check that it's supported on [ship.equipm
 
 1. If you already have a SoH build with the package `com.dishii.soh` (Darkaxt's port for example), uninstall it first. This one is signed with a different key so Android won't install over it. Your `SOH` folder stays where it is, but back it up anyway.
 2. Download the APK from the [releases](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases/latest) and install it.
-3. Start it, allow file access, pick your ROM. It builds `oot.o2r` the first time.
+3. Start it, allow file access and press OK. The first launch copies its files (v1.0.0 shows a black screen for several minutes during this, just wait; later versions show a counter). Then tap Yes to pick your ROM. It builds `oot.o2r` the first time.
 4. On the Thor, set Autolock to the top screen in the AYN settings.
 5. Make a seed in the Randomizer menu and start a new file.
 
