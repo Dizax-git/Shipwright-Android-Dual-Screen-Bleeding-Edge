@@ -301,7 +301,7 @@ OTRGlobals::OTRGlobals() {
     context->InitConsoleVariables();
 
 #ifdef __ANDROID__
-    Ship::Mobile::SetToggleButtonVisible(CVarGetInteger("gDroidHideToggleButton", 0) == 0);
+    Ship::Mobile::SetToggleButtonVisible(CVarGetInteger("gDroidHideToggleButton", 1) == 0);
     Ship::Mobile::SetFreeLookTouchEnabled(CVarGetInteger("gDroidFreeLookTouch", 0) != 0);
 #endif
 

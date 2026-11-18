@@ -1750,7 +1750,7 @@ void SohInputEditorWindow::DrawLinkTab() {
             ImGui::PopStyleColor();
             ImGui::PopStyleColor();
 
-            bool hideToggleBtn = CVarGetInteger("gDroidHideToggleButton", 0) != 0;
+            bool hideToggleBtn = CVarGetInteger("gDroidHideToggleButton", 1) != 0;
             if (ImGui::Checkbox("Hide Overlay Toggle Button##HideToggleBtn", &hideToggleBtn)) {
                 CVarSetInteger("gDroidHideToggleButton", hideToggleBtn ? 1 : 0);
                 Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();

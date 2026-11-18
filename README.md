@@ -62,6 +62,8 @@ To update, just install the new APK over the old one. Saves and settings are kep
 
 Settings are in Enhancements > UI: what the bottom screen shows (trackers or the normal HUD), its size, game font on/off, reachable checks, follow current area, maps and compasses.
 
+The on-screen touch controls are hidden, the Thor has its own buttons. To bring them back: Settings > Controls > Touch Controls, untick "Hide Overlay Toggle Button", then tap the eye.
+
 ## Notes
 
 - Android arm64 only. I only tested it on my Thor. Other dual screen handhelds might work if Android sees the second screen as a display.
