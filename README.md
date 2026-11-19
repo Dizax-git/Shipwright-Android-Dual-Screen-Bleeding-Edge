@@ -52,8 +52,10 @@ You need your own Ocarina of Time ROM. Check that it's supported on [ship.equipm
 
 1. If you already have a SoH build with the package `com.dishii.soh` (Darkaxt's port for example), uninstall it first. This one is signed with a different key so Android won't install over it. Your `SOH` folder stays where it is, but back it up anyway.
 2. Download the APK from the [releases](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases/latest) and install it.
-3. Start it, allow file access and press OK. The first launch copies its files (v1.0.0 shows a black screen for several minutes during this, just wait; later versions show a counter). Then tap Yes to pick your ROM. It builds `oot.o2r` the first time.
+3. Start it, allow file access and press OK. The first launch copies its files, a counter shows the progress (v1.0.0 showed a black screen for several minutes instead, just wait). Then tap Yes to pick your ROM (internal storage is in the ☰ menu of the file picker). It builds `oot.o2r` the first time.
 4. On the Thor, set Autolock to the top screen in the AYN settings.
+
+   If your front-end (Cocoon or another) starts the game on the bottom screen, it moves itself to the top screen. With Cocoon you can also set the game to the top screen in its settings, otherwise Cocoon's session card may stay open after you quit (press B to close it).
 5. Make a seed in the Randomizer menu and start a new file.
 
 If you use the [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded-SoH) HD pack (in `SOH/mods`), the bottom screen uses its HD font.
@@ -93,4 +95,4 @@ Zelda is Nintendo's. No game data in here.
 
 Une version de Ship of Harkinian pour l'AYN Thor, avec un tracker de rando sur l'écran du bas : objets, carte des indices (sans spoil, seulement ce que vous avez lu) et liste des checks faisables maintenant selon la logique du rando. Tout est dans la police du jeu, et tous les noms de checks sont traduits en français.
 
-Pour l'installer : désinstallez d'abord toute autre version qui utilise `com.dishii.soh` (le dossier `SOH` reste, mais faites une copie), installez l'APK de la [release](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases/latest), puis choisissez votre ROM au premier lancement. Sur la Thor, mettez Autolock sur l'écran du haut. Les réglages sont dans Enhancements > UI.
+Pour l'installer : désinstallez d'abord toute autre version qui utilise `com.dishii.soh` (le dossier `SOH` reste, mais faites une copie), installez l'APK de la [release](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases/latest), puis choisissez votre ROM au premier lancement (un compteur montre la copie des fichiers, la mémoire interne est dans le menu ☰ du sélecteur). Sur la Thor, mettez Autolock sur l'écran du haut. Si votre front-end (Cocoon ou autre) lance le jeu sur l'écran du bas, il passe tout seul en haut ; dans Cocoon, réglez quand même le jeu sur l'écran du haut, sinon sa carte de session peut rester affichée après avoir quitté (B pour la fermer). Les commandes tactiles sont cachées (Settings > Controls > Touch Controls pour les retrouver). Les réglages sont dans Enhancements > UI.
