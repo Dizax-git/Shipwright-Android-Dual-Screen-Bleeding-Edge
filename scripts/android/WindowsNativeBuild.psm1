@@ -341,6 +341,13 @@ function Invoke-SohWindowsAndroidBuild {
         $null = Invoke-SohProcess -FilePath $git -Arguments @('-C', $vcpkg, 'fetch', '--depth', '1', 'origin', $script:VcpkgCommit) -WorkingDirectory $working
         $null = Invoke-SohProcess -FilePath $git -Arguments @('-C', $vcpkg, 'checkout', '--detach', 'FETCH_HEAD') -WorkingDirectory $working
         $env:VCPKG_ROOT = $vcpkg
+        # Thor fork: vcpkg's fmt port downloads a patch from github.com (commit .patch URL), which answered
+        # 503 for hours on 19 Nov 2026. Byte-identical copies (same SHA512, still checked by vcpkg) are kept
+        # in scripts\android\vcpkg-downloads and put in vcpkg's downloads folder, so vcpkg doesn't fetch them.
+        $vcpkgDownloads = Join-Path $vcpkg 'downloads'
+        [IO.Directory]::CreateDirectory($vcpkgDownloads) | Out-Null
+        Get-ChildItem -LiteralPath (Join-Path $source 'scripts\android\vcpkg-downloads') -File -ErrorAction SilentlyContinue |
+            ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $vcpkgDownloads $_.Name) -Force }
         $env:VCPKG_DEFAULT_BINARY_CACHE = Join-Path $working 'vcpkg-binary-cache'
         [IO.Directory]::CreateDirectory($env:VCPKG_DEFAULT_BINARY_CACHE) | Out-Null
 
