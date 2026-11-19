@@ -145,7 +145,6 @@ public class MainActivity extends SDLActivity{
     // user comes back from that page (and onRequestPermissionsResult on Android 6-10).
     private boolean setupStarted;
     private boolean permissionAsked;
-    private boolean pausedWhileAskingPermission;
 
     private void startSetupIfPermitted() {
         if (setupStarted || !hasStoragePermission()) {
@@ -686,12 +685,7 @@ public class MainActivity extends SDLActivity{
     protected void onResume() {
         super.onResume();
         if (!setupStarted && permissionAsked) {
-            if (hasStoragePermission()) {
-                startSetupIfPermitted();
-            } else if (pausedWhileAskingPermission) {
-                Toast.makeText(this, "Allow all files access for Ship of Harkinian to continue.",
-                        Toast.LENGTH_LONG).show();
-            }
+            startSetupIfPermitted();
         }
         if (dualScreenManager != null) {
             dualScreenManager.start();
@@ -709,9 +703,6 @@ public class MainActivity extends SDLActivity{
 
     @Override
     protected void onPause() {
-        if (permissionAsked && !setupStarted) {
-            pausedWhileAskingPermission = true;
-        }
         if (dualScreenManager != null) {
             dualScreenManager.stop();
         }
@@ -740,6 +731,8 @@ public class MainActivity extends SDLActivity{
         getWindow().getDecorView().post(this::moveTaskToMainDisplayIfNeeded);
     }
 
+    private int moveToMainDisplayTries;
+
     private void moveTaskToMainDisplayIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return;
@@ -755,6 +748,11 @@ public class MainActivity extends SDLActivity{
             Log.w("ThorLaunch", "unknown launch display", e);
         }
         if (displayId == android.view.Display.DEFAULT_DISPLAY) {
+            moveToMainDisplayTries = 0;
+            return;
+        }
+        // If Android refuses the move (virtual display, desktop mode...), don't retry forever.
+        if (isFinishing() || ++moveToMainDisplayTries > 3) {
             return;
         }
         Log.i("ThorLaunch", "started on display " + displayId + ": moving task " + getTaskId()
