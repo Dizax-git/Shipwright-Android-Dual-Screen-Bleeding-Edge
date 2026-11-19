@@ -64,7 +64,7 @@ To update, just install the new APK over the old one. Saves and settings are kep
 
 Settings are in Enhancements > UI: what the bottom screen shows (trackers or the normal HUD), its size, game font on/off, reachable checks, follow current area, maps and compasses.
 
-The on-screen touch controls are hidden, the Thor has its own buttons. To bring them back: Settings > Controls > Touch Controls, untick "Hide Overlay Toggle Button", then tap the eye.
+The on-screen touch controls are hidden, the Thor has its own buttons. To bring them back: Settings > Controls, "Link (P1)" tab > Touch Controls, untick "Hide Overlay Toggle Button", then tap the eye.
 
 ## Notes
 
@@ -95,4 +95,4 @@ Zelda is Nintendo's. No game data in here.
 
 Une version de Ship of Harkinian pour l'AYN Thor, avec un tracker de rando sur l'écran du bas : objets, carte des indices (sans spoil, seulement ce que vous avez lu) et liste des checks faisables maintenant selon la logique du rando. Tout est dans la police du jeu, et tous les noms de checks sont traduits en français.
 
-Pour l'installer : désinstallez d'abord toute autre version qui utilise `com.dishii.soh` (le dossier `SOH` reste, mais faites une copie), installez l'APK de la [release](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases/latest), puis choisissez votre ROM au premier lancement (un compteur montre la copie des fichiers, la mémoire interne est dans le menu ☰ du sélecteur). Sur la Thor, mettez Autolock sur l'écran du haut. Si votre front-end (Cocoon ou autre) lance le jeu sur l'écran du bas, il passe tout seul en haut ; dans Cocoon, réglez quand même le jeu sur l'écran du haut, sinon sa carte de session peut rester affichée après avoir quitté (B pour la fermer). Les commandes tactiles sont cachées (Settings > Controls > Touch Controls pour les retrouver). Les réglages sont dans Enhancements > UI.
+Pour l'installer : désinstallez d'abord toute autre version qui utilise `com.dishii.soh` (le dossier `SOH` reste, mais faites une copie), installez l'APK de la [release](https://github.com/Dizax-git/Shipwright-Android-Dual-Screen-Bleeding-Edge/releases/latest), puis choisissez votre ROM au premier lancement (un compteur montre la copie des fichiers, la mémoire interne est dans le menu ☰ du sélecteur). Sur la Thor, mettez Autolock sur l'écran du haut. Si votre front-end (Cocoon ou autre) lance le jeu sur l'écran du bas, il passe tout seul en haut ; dans Cocoon, réglez quand même le jeu sur l'écran du haut, sinon sa carte de session peut rester affichée après avoir quitté (B pour la fermer). Les commandes tactiles sont cachées : pour les retrouver, Settings > Controls, onglet « Link (P1) » > Touch Controls, décochez « Hide Overlay Toggle Button » puis touchez l'œil. Les réglages sont dans Enhancements > UI.
