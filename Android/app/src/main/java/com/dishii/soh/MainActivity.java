@@ -103,6 +103,7 @@ public class MainActivity extends SDLActivity{
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        moveTaskToMainDisplayIfNeeded();
         super.onCreate(savedInstanceState);
         ImmersiveMode.apply(getWindow());
 
@@ -685,6 +686,43 @@ public class MainActivity extends SDLActivity{
         setItemButtonHeld(false);
         mIsAiming = false;
         super.onPause();
+    }
+
+    // Thor: front-ends (Cocoon and others) can start the game on the bottom screen, where it
+    // shows nothing usable (the trackers presentation covers it). If so, ask for MainActivity again
+    // on the main display: Android moves the SAME task (singleInstance) without restarting it
+    // (configChanges covers the screen change). The bottom-screen trackers always go to the
+    // non-default display, so they end up on the bottom screen. Same fix as the Majora port.
+    // Called before any initialisation (SDL, files).
+    private void moveTaskToMainDisplayIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+        int displayId = android.view.Display.DEFAULT_DISPLAY;
+        try {
+            android.view.Display display = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? getDisplay() : getWindowManager().getDefaultDisplay();
+            if (display != null) {
+                displayId = display.getDisplayId();
+            }
+        } catch (Exception e) {
+            Log.w("ThorLaunch", "unknown launch display", e);
+        }
+        if (displayId == android.view.Display.DEFAULT_DISPLAY) {
+            return;
+        }
+        Log.i("ThorLaunch", "started on display " + displayId + ": moving task " + getTaskId()
+                + " to the main display");
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setAction(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(intent, android.app.ActivityOptions.makeBasic()
+                    .setLaunchDisplayId(android.view.Display.DEFAULT_DISPLAY).toBundle());
+        } catch (Exception e) {
+            Log.w("ThorLaunch", "move to the main display refused", e);
+        }
     }
 
     // Thor: "Quit" in the game menu must really close the game, not leave it
