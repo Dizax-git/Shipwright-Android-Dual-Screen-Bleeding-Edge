@@ -117,9 +117,9 @@ public class MainActivity extends SDLActivity{
 
         // Check if storage permissions are granted
         if (hasStoragePermission()) {
-            doVersionCheck();
-            checkAndSetupFiles();
+            startSetupIfPermitted();
         } else {
+            permissionAsked = true;
             requestStoragePermission();
         }
 
@@ -136,6 +136,32 @@ public class MainActivity extends SDLActivity{
             setupLatch.await();  // Block until setup is complete
         } catch (InterruptedException e) {
             e.printStackTrace();
+        }
+    }
+
+    // Setup must start exactly once, as soon as file access is granted. The "all files access"
+    // page is opened from a singleInstance activity, so Android returns RESULT_CANCELED to
+    // onActivityResult right away, before the user has decided: onResume checks again when the
+    // user comes back from that page (and onRequestPermissionsResult on Android 6-10).
+    private boolean setupStarted;
+    private boolean permissionAsked;
+    private boolean pausedWhileAskingPermission;
+
+    private void startSetupIfPermitted() {
+        if (setupStarted || !hasStoragePermission()) {
+            return;
+        }
+        setupStarted = true;
+        doVersionCheck();
+        checkAndSetupFiles();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
+            startSetupIfPermitted();
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults); // SDL's own requests
         }
     }
 
@@ -230,7 +256,7 @@ public class MainActivity extends SDLActivity{
                 startActivityForResult(intent, STORAGE_PERMISSION_REQUEST_CODE);
             } else {
                 // Already granted
-                checkAndSetupFiles();
+                startSetupIfPermitted();
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             // Android 6–10 → request READ/WRITE at runtime
@@ -242,7 +268,7 @@ public class MainActivity extends SDLActivity{
                     STORAGE_PERMISSION_REQUEST_CODE);
         } else {
             // Below Android 6 → permissions granted at install time
-            checkAndSetupFiles();
+            startSetupIfPermitted();
         }
     }
 
@@ -447,14 +473,9 @@ public class MainActivity extends SDLActivity{
             }
 
         } else if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
-            // Handle MANAGE_EXTERNAL_STORAGE result
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if (Environment.isExternalStorageManager()) {
-                    checkAndSetupFiles();
-                } else {
-                    Toast.makeText(this, "Storage permission is required to access files.", Toast.LENGTH_LONG).show();
-                }
-            }
+            // Handle MANAGE_EXTERNAL_STORAGE result (may arrive before the user decided, see
+            // startSetupIfPermitted; onResume checks again).
+            startSetupIfPermitted();
         }
     }
 
@@ -664,6 +685,14 @@ public class MainActivity extends SDLActivity{
     @Override
     protected void onResume() {
         super.onResume();
+        if (!setupStarted && permissionAsked) {
+            if (hasStoragePermission()) {
+                startSetupIfPermitted();
+            } else if (pausedWhileAskingPermission) {
+                Toast.makeText(this, "Allow all files access for Ship of Harkinian to continue.",
+                        Toast.LENGTH_LONG).show();
+            }
+        }
         if (dualScreenManager != null) {
             dualScreenManager.start();
         }
@@ -680,6 +709,9 @@ public class MainActivity extends SDLActivity{
 
     @Override
     protected void onPause() {
+        if (permissionAsked && !setupStarted) {
+            pausedWhileAskingPermission = true;
+        }
         if (dualScreenManager != null) {
             dualScreenManager.stop();
         }
@@ -694,6 +726,20 @@ public class MainActivity extends SDLActivity{
     // (configChanges covers the screen change). The bottom-screen trackers always go to the
     // non-default display, so they end up on the bottom screen. Same fix as the Majora port.
     // Called before any initialisation (SDL, files).
+    // Game already running (back to the launcher without quitting) and started again by a
+    // front-end on the bottom screen: Android moves the existing task there without onCreate.
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        getWindow().getDecorView().post(this::moveTaskToMainDisplayIfNeeded);
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        getWindow().getDecorView().post(this::moveTaskToMainDisplayIfNeeded);
+    }
+
     private void moveTaskToMainDisplayIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return;

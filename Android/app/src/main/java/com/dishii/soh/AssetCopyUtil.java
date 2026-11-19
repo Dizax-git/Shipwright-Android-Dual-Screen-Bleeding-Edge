@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -62,7 +63,7 @@ public class AssetCopyUtil {
     /**
      * Copies every file of an APK asset folder to external storage.
      *
-     * The previous version asked AssetManager.list() for every one of the ~7,700 extractor
+     * The previous version asked AssetManager.list() for every one of the ~28,000 asset
      * files (each call scans the APK) and wrote each file atomically (temp file, fsync,
      * rename). On /sdcard that took well over 5 minutes on a Thor. Now the file list comes
      * from one pass over the APK, and small files are written directly by a few threads.
@@ -97,17 +98,30 @@ public class AssetCopyUtil {
             progress.onProgress(0, total);
         }
 
+        // If one file fails, the other threads stop at their next file, and this method only
+        // returns once every thread has stopped: no write or progress call after the error
+        // (the caller shows the Retry dialog, which must not be covered or raced).
+        final AtomicBoolean failed = new AtomicBoolean();
         ExecutorService pool = Executors.newFixedThreadPool(COPY_THREADS);
+        IOException error = null;
         try {
             List<Future<?>> tasks = new ArrayList<>();
             for (List<String> chunk : split(files, COPY_THREADS)) {
                 tasks.add(pool.submit(() -> {
                     byte[] buffer = new byte[65536];
                     for (String relative : chunk) {
-                        copyAssetDirect(assetManager, assetsFolderPath + "/" + relative,
-                                new File(root, relative), buffer);
+                        if (failed.get()) {
+                            return null;
+                        }
+                        try {
+                            copyAssetDirect(assetManager, assetsFolderPath + "/" + relative,
+                                    new File(root, relative), buffer);
+                        } catch (IOException | RuntimeException e) {
+                            failed.set(true);
+                            throw e;
+                        }
                         int count = done.incrementAndGet();
-                        if (progress != null && (count % PROGRESS_STEP == 0 || count == total)) {
+                        if (progress != null && !failed.get() && (count % PROGRESS_STEP == 0 || count == total)) {
                             progress.onProgress(count, total);
                         }
                     }
@@ -118,18 +132,25 @@ public class AssetCopyUtil {
                 try {
                     task.get();
                 } catch (java.util.concurrent.ExecutionException e) {
-                    Throwable cause = e.getCause();
-                    if (cause instanceof IOException) {
-                        throw (IOException) cause;
+                    failed.set(true);
+                    if (error == null) {
+                        Throwable cause = e.getCause();
+                        error = cause instanceof IOException ? (IOException) cause
+                                : new IOException("Asset copy failed", cause);
                     }
-                    throw new IOException("Asset copy failed", cause);
                 } catch (InterruptedException e) {
+                    failed.set(true);
                     Thread.currentThread().interrupt();
-                    throw new IOException("Asset copy interrupted", e);
+                    if (error == null) {
+                        error = new IOException("Asset copy interrupted", e);
+                    }
                 }
             }
         } finally {
-            pool.shutdownNow();
+            pool.shutdown();
+        }
+        if (error != null) {
+            throw error;
         }
     }
 
